@@ -84,14 +84,20 @@ class DatasetLoader:
             reader = csv.reader(f)
             header = next(reader)
             for row in reader:
-                label = int(row[2])
-                path = path_to_home + row[1]
+                #label = int(row[2])
+                label = int(row[3])
+                #path = path_to_home + row[1]
+                images = [load_and_resize(path_to_home+filepath) for filepath in row[0:3]]
+                image = combine_images(images)
+                save_as_image(image, './hoge/{0}_{1}.png'.format(label, row[0].replace('/','_')))
+                """
                 if os.path.isdir(path):
                     files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
                     images = [load_and_resize(f) for f in files]
                     image = combine_images(images)
                 else:
                     image = load_and_resize(path)
+                """
                 dataset.append( (label, image) )
 
         train_image_set = []
