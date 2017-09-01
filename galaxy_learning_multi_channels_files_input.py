@@ -15,11 +15,15 @@ from astropy.io import fits
 
 from PIL import Image
 
+import pydot
+import graphviz
+
 import os
 import numpy
 import sys
 import csv
 import random
+import base64
 import numpy as np
 from pandas import DataFrame
 from sklearn.model_selection import train_test_split
@@ -36,10 +40,8 @@ input_shape = (24, 24, img_channels)
 train_test_split_rate = 0.8
 nb_epoch = 20
 batch_size = 10
-#validation_split = 0.1
-validation_split = 0.0
-
-path_to_home = "../"
+validation_split = 0.1
+#validation_split = 0.0
 
 class DatasetLoader:
     def __init__(self, input_file_path):
@@ -50,14 +52,19 @@ class DatasetLoader:
         startpos = int(original_size / 2) - int(pickup_size / 2)
         img = img[startpos:startpos+pickup_size, startpos:startpos+pickup_size]
         return img
-
+    
+    def save_as_image(image, output_path):
+        image = normalize(image)
+        pil_img = Image.fromarray(numpy.uint8(image))
+        pil_img.save(output_path)
+    
     def __import_dataset(self, input_file_path):
         dataset = []
 
         def load_and_resize(filepath):
             hdulist = fits.open(filepath)
             raw_image = hdulist[0].data
-            if( raw_image == None ):
+            if( raw_image is None ):
                 raw_image = hdulist[1].data
             image = np.resize(raw_image, [raw_size[0], raw_size[1]])
             image = self.zoom_img(image, raw_size[0], input_shape[0])
@@ -84,12 +91,11 @@ class DatasetLoader:
             reader = csv.reader(f)
             header = next(reader)
             for row in reader:
-                #label = int(row[2])
                 label = int(row[3])
-                #path = path_to_home + row[1]
-                images = [load_and_resize(path_to_home+filepath) for filepath in row[0:3]]
+                images = [load_and_resize(filepath) for filepath in row[0:3]]
                 image = combine_images(images)
-                save_as_image(image, './hoge/{0}_{1}.png'.format(label, row[0].replace('/','_')))
+                #image = normalize(image)
+                #save_as_image(image, './combined_images/{0}_{1}.png'.format(label, row[0].replace('/','_')))
                 """
                 if os.path.isdir(path):
                     files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
@@ -169,7 +175,29 @@ class GalaxyClassifier:
         test_label_set = to_categorical(test_label_set)
         score = self.model.evaluate(test_image_set, test_label_set, verbose=0)
         print("%s: %.2f%%" % (self.model.metrics_names[1], score[1] * 100))
-        plot_model(self.model, to_file='model.png')
+        #plot_model(self.model, to_file='model.png')
+
+    def predictAll(self, test_image_set, test_label_set):
+        test_image_set = np.array(test_image_set)
+        test_label_set = np.array(test_label_set)
+        test_image_set = test_image_set.reshape(test_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
+        test_label_set_categorical = to_categorical(test_label_set)
+        predicted = self.model.predict(test_image_set)
+        self.__writeResultToCSV(zip(test_label_set, predicted), './predict_result.csv')
+        #for (correct_label, probabilities) in zip(test_label_set, predicted):
+        #    print("correct label = %s, probabilities = [%s, %s]" % (correct_label, probabilities[0], probabilities[1]))
+
+
+    def __writeResultToCSV(self, zipped_label_probabilities, output_filepath):
+        with open(output_filepath, 'w') as f:
+            writer = csv.writer(f)
+            for result in zipped_label_probabilities:
+                label = result[0]
+                float_formatter = lambda x: "%.4f" % x
+                probabilities = map(float_formatter, result[1])
+                row = [label]
+                row.extend(probabilities)
+                writer.writerow(row)
 
 if __name__ == "__main__":
     argv = sys.argv
@@ -182,3 +210,5 @@ if __name__ == "__main__":
     galaxyClassifier.train(dataset.train_image_set, dataset.train_label_set)
 
     galaxyClassifier.evaluate(dataset.test_image_set, dataset.test_label_set)
+
+    galaxyClassifier.predictAll(dataset.test_image_set, dataset.test_label_set)

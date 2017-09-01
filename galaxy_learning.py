@@ -26,12 +26,13 @@ from sklearn.model_selection import train_test_split
 
 class_num = 2 # the number of classes for classification
 
-img_channels = 3
+img_chanels = 1
+#img_channels = 3
 #input_shape = (1, 239, 239) # ( channels, cols, rows )
-#raw_size = (239, 239, 1)
-raw_size = (48, 48, img_channels)
-#input_shape = (50, 50, 1)
-input_shape = (24, 24, img_channels)
+raw_size = (239, 239, 1)
+#raw_size = (48, 48, img_channels)
+input_shape = (50, 50, 1)
+#input_shape = (24, 24, img_channels)
 
 train_test_split_rate = 0.8
 nb_epoch = 20
@@ -39,7 +40,7 @@ batch_size = 10
 #validation_split = 0.1
 validation_split = 0.0
 
-path_to_home = "../"
+path_to_home = "./"
 
 class DatasetLoader:
     def __init__(self, input_file_path):
@@ -163,7 +164,7 @@ class GalaxyClassifier:
         test_label_set = to_categorical(test_label_set)
         score = self.model.evaluate(test_image_set, test_label_set, verbose=0)
         print("%s: %.2f%%" % (self.model.metrics_names[1], score[1] * 100))
-        plot_model(self.model, to_file='model.png')
+        #plot_model(self.model, to_file='model.png')
 
 if __name__ == "__main__":
     argv = sys.argv
@@ -172,7 +173,8 @@ if __name__ == "__main__":
         quit()
     dataset = DatasetLoader(argv[1])
     galaxyClassifier = GalaxyClassifier()
-    galaxyClassifier.build_model_lae()
+    galaxyClassifier.build_model_lbg()
+    #galaxyClassifier.build_model_lae()
     galaxyClassifier.train(dataset.train_image_set, dataset.train_label_set)
 
     galaxyClassifier.evaluate(dataset.test_image_set, dataset.test_label_set)
