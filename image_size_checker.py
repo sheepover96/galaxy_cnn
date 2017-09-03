@@ -11,10 +11,10 @@ class_num = 2 # the number of classes for classification
 
 img_channels = 3
 #input_shape = (1, 239, 239) # ( channels, cols, rows )
-#raw_size = (239, 239, 1)
-raw_size = (48, 48, img_channels)
-#input_shape = (50, 50, 1)
-input_shape = (24, 24, img_channels)
+raw_size = (239, 239, 1)
+#raw_size = (48, 48, img_channels)
+input_shape = (50, 50, 1)
+#input_shape = (24, 24, img_channels)
 
 train_test_split_rate = 0.8
 nb_epoch = 20

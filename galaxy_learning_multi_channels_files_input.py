@@ -30,6 +30,7 @@ from sklearn.model_selection import train_test_split
 
 class_num = 2 # the number of classes for classification
 
+#img_channels = 1
 img_channels = 3
 #input_shape = (1, 239, 239) # ( channels, cols, rows )
 #raw_size = (239, 239, 1)
@@ -90,10 +91,16 @@ class DatasetLoader:
         with open(input_file_path, 'r') as f:
             reader = csv.reader(f)
             header = next(reader)
+            col_size = len(header)
+            channel_num = col_size - 2
+            label_index = col_size - 1
             for row in reader:
-                label = int(row[3])
-                images = [load_and_resize(filepath) for filepath in row[0:3]]
-                image = combine_images(images)
+                label = int(row[label_index])
+                if channel_num > 1:
+                    images = [load_and_resize(filepath) for filepath in row[1:label_index]]
+                    image = combine_images(images)
+                else:
+                    image = load_and_resize(row[1])
                 #image = normalize(image)
                 #save_as_image(image, './combined_images/{0}_{1}.png'.format(label, row[0].replace('/','_')))
                 """
@@ -206,6 +213,7 @@ if __name__ == "__main__":
         quit()
     dataset = DatasetLoader(argv[1])
     galaxyClassifier = GalaxyClassifier()
+    #galaxyClassifier.build_model_lbg()
     galaxyClassifier.build_model_lae()
     galaxyClassifier.train(dataset.train_image_set, dataset.train_label_set)
 

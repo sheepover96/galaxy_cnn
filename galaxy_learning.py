@@ -60,6 +60,7 @@ class DatasetLoader:
             raw_image = hdulist[0].data
             if( raw_image == None ):
                 raw_image = hdulist[1].data
+                print("height:%s, width:%s" % (len(raw_image), len(raw_image[0])))
             image = np.resize(raw_image, [raw_size[0], raw_size[1]])
             image = self.zoom_img(image, raw_size[0], input_shape[0])
             return image
