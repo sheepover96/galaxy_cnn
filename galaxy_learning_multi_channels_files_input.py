@@ -46,7 +46,8 @@ validation_split = 0.1
 
 class DatasetLoader:
     def __init__(self, input_file_path):
-        self.train_image_set, self.train_label_set, self.test_image_set, self.test_label_set \
+        self.train_image_set, self.train_label_set, self.train_image_paths_set, self.train_catalog_ids_set, self.train_combined_img_path_set, \
+        self.test_image_set, self.test_label_set, self.test_image_paths_set, self.test_catalog_ids_set, self.test_combined_img_path_set \
             = self.__import_dataset(input_file_path)
 
     def zoom_img(self, img, original_size, pickup_size):
@@ -96,13 +97,16 @@ class DatasetLoader:
             label_index = col_size - 1
             for row in reader:
                 label = int(row[label_index])
+                image_paths = row[1:label_index]
+                catalog_id = row[0]
                 if channel_num > 1:
-                    images = [load_and_resize(filepath) for filepath in row[1:label_index]]
+                    images = [load_and_resize(filepath) for filepath in image_paths]
                     image = combine_images(images)
                 else:
                     image = load_and_resize(row[1])
                 #image = normalize(image)
-                #save_as_image(image, './combined_images/{0}_{1}.png'.format(label, row[0].replace('/','_')))
+                combined_img_path = '/Users/daiz/combined_images/{0}_{1}.png'.format(label, row[0].replace('/','_'))
+                save_as_image(image, combined_img_path)
                 """
                 if os.path.isdir(path):
                     files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
@@ -111,21 +115,46 @@ class DatasetLoader:
                 else:
                     image = load_and_resize(path)
                 """
-                dataset.append( (label, image) )
+                dataset.append( (label, image, image_paths, catalog_id, combined_img_path) )
 
         train_image_set = []
         train_label_set = []
+        train_image_paths_set = []
+        train_catalog_ids_set = []
+        train_combined_img_path_set = []
         test_image_set = []
         test_label_set = []
+        test_image_paths_set = []
+        test_catalog_ids_set = []
+        test_combined_img_path_set = []
         for i in range(0, class_num):
             images = list(map(lambda x: x[1], list(filter(lambda x: x[0] == i, dataset))))
+            image_paths = list(map(lambda x: x[2], list(filter(lambda x: x[0] == i, dataset))))
+            catalog_ids = list(map(lambda x: x[3], list(filter(lambda x: x[0] == i, dataset))))
+            combined_img_paths = list(map(lambda x: x[4], list(filter(lambda x: x[0] == i, dataset))))
+            image_path_zipped = list(zip(images, image_paths, catalog_ids, combined_img_paths))
             labels = len(images)*[i]
-            train_X, test_X, train_Y, test_Y = train_test_split(images, labels, train_size=train_test_split_rate)
-            train_image_set.extend(train_X)
+            train_X, test_X, train_Y, test_Y = train_test_split(image_path_zipped, labels, train_size=train_test_split_rate)
+            train_images = list(map(lambda x: x[0], train_X))
+            train_image_paths = list(map(lambda x: x[1], train_X))
+            train_catalog_ids = list(map(lambda x: x[2], train_X))
+            train_combined_img_paths = list(map(lambda x: x[3], train_X))
+            test_images = list(map(lambda x: x[0], test_X))
+            test_image_paths = list(map(lambda x: x[1], test_X))
+            test_catalog_ids = list(map(lambda x: x[2], test_X))
+            test_combined_img_paths = list(map(lambda x: x[3], test_X))
+            train_image_set.extend(train_images)
             train_label_set.extend(train_Y)
-            test_image_set.extend(test_X)
+            train_image_paths_set.extend(train_image_paths)
+            train_catalog_ids_set.extend(train_catalog_ids)
+            train_combined_img_path_set.extend(train_combined_img_paths)
+            test_image_set.extend(test_images)
             test_label_set.extend(test_Y)
-        return ( train_image_set, train_label_set, test_image_set, test_label_set )
+            test_image_paths_set.extend(test_image_paths)
+            test_catalog_ids_set.extend(test_catalog_ids)
+            test_combined_img_path_set.extend(test_combined_img_paths)
+        return ( train_image_set, train_label_set, train_image_paths_set, train_catalog_ids_set, train_combined_img_path_set,
+             test_image_set, test_label_set, test_image_paths_set, test_catalog_ids_set, test_combined_img_path_set )
 
 class GalaxyClassifier:
     def __init__(self):
@@ -184,25 +213,29 @@ class GalaxyClassifier:
         print("%s: %.2f%%" % (self.model.metrics_names[1], score[1] * 100))
         #plot_model(self.model, to_file='model.png')
 
-    def predictAll(self, test_image_set, test_label_set):
+    def predictAll(self, test_image_set, test_label_set, test_image_paths_set, test_catalog_ids_set, test_combined_img_path_set):
         test_image_set = np.array(test_image_set)
         test_label_set = np.array(test_label_set)
         test_image_set = test_image_set.reshape(test_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
         test_label_set_categorical = to_categorical(test_label_set)
         predicted = self.model.predict(test_image_set)
-        self.__writeResultToCSV(zip(test_label_set, predicted), './predict_result.csv')
+        self.__writeResultToCSV(zip(test_catalog_ids_set, test_image_paths_set, test_combined_img_path_set, test_label_set, predicted), './predict_result.csv')
         #for (correct_label, probabilities) in zip(test_label_set, predicted):
         #    print("correct label = %s, probabilities = [%s, %s]" % (correct_label, probabilities[0], probabilities[1]))
 
 
-    def __writeResultToCSV(self, zipped_label_probabilities, output_filepath):
+    def __writeResultToCSV(self, zipped_result, output_filepath):
         with open(output_filepath, 'w') as f:
             writer = csv.writer(f)
-            for result in zipped_label_probabilities:
-                label = result[0]
+            for result in zipped_result:
+                cat_id = result[0]
+                img_paths = result[1]
+                combined_img_path = result[2]
+                label = result[3]
                 float_formatter = lambda x: "%.4f" % x
-                probabilities = map(float_formatter, result[1])
-                row = [label]
+                probabilities = map(float_formatter, result[4])
+                # row should be [cat_id, img1, img2, img3, combined_img, correct_label, [probabilties], answer]
+                row = [cat_id, img_paths, combined_img_path, label]
                 row.extend(probabilities)
                 writer.writerow(row)
 
@@ -219,4 +252,4 @@ if __name__ == "__main__":
 
     galaxyClassifier.evaluate(dataset.test_image_set, dataset.test_label_set)
 
-    galaxyClassifier.predictAll(dataset.test_image_set, dataset.test_label_set)
+    galaxyClassifier.predictAll(dataset.test_image_set, dataset.test_label_set, dataset.test_image_paths_set, dataset.test_catalog_ids_set, dataset.test_combined_img_path_set)
