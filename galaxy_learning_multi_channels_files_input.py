@@ -33,10 +33,10 @@ class_num = 2 # the number of classes for classification
 #img_channels = 1
 img_channels = 3
 #input_shape = (1, 239, 239) # ( channels, cols, rows )
-#raw_size = (239, 239, 1)
-raw_size = (48, 48, img_channels)
-#input_shape = (50, 50, 1)
-input_shape = (24, 24, img_channels)
+raw_size = (239, 239, img_channels)
+#raw_size = (48, 48, img_channels)
+input_shape = (50, 50, img_channels)
+#input_shape = (24, 24, img_channels)
 
 train_test_split_rate = 0.8
 nb_epoch = 20
@@ -68,7 +68,8 @@ class DatasetLoader:
             raw_image = hdulist[0].data
             if( raw_image is None ):
                 raw_image = hdulist[1].data
-            image = np.resize(raw_image, [raw_size[0], raw_size[1]])
+            #image = np.resize(raw_image, [raw_size[0], raw_size[1]])
+            image = raw_image
             image = self.zoom_img(image, raw_size[0], input_shape[0])
             return image
 
@@ -92,12 +93,14 @@ class DatasetLoader:
         with open(input_file_path, 'r') as f:
             reader = csv.reader(f)
             header = next(reader)
-            col_size = len(header)
-            channel_num = col_size - 2
-            label_index = col_size - 1
-            for row in reader:
+            #col_size = len(header)
+            col_size = 6
+            channel_num = 3
+            label_index = 5
+            for i, row in enumerate(reader):
+                print("No. %s started" % i)    
                 label = int(row[label_index])
-                image_paths = row[1:label_index]
+                image_paths = row[2:5]
                 catalog_id = row[0]
                 if channel_num > 1:
                     images = [load_and_resize(filepath) for filepath in image_paths]
@@ -105,7 +108,7 @@ class DatasetLoader:
                 else:
                     image = load_and_resize(row[1])
                 #image = normalize(image)
-                combined_img_path = '/Users/daiz/combined_images/{0}_{1}.png'.format(label, row[0].replace('/','_'))
+                combined_img_path = '/home/daiz/combined_images/{0}_{1}.png'.format(label, row[0].replace('/','_'))
                 save_as_image(image, combined_img_path)
                 """
                 if os.path.isdir(path):
@@ -116,6 +119,8 @@ class DatasetLoader:
                     image = load_and_resize(path)
                 """
                 dataset.append( (label, image, image_paths, catalog_id, combined_img_path) )
+
+        print("DATASET SIZE = %s" % len(dataset))
 
         train_image_set = []
         train_label_set = []
@@ -129,6 +134,7 @@ class DatasetLoader:
         test_combined_img_path_set = []
         for i in range(0, class_num):
             images = list(map(lambda x: x[1], list(filter(lambda x: x[0] == i, dataset))))
+            print(len(images))
             image_paths = list(map(lambda x: x[2], list(filter(lambda x: x[0] == i, dataset))))
             catalog_ids = list(map(lambda x: x[3], list(filter(lambda x: x[0] == i, dataset))))
             combined_img_paths = list(map(lambda x: x[4], list(filter(lambda x: x[0] == i, dataset))))
@@ -220,8 +226,8 @@ class GalaxyClassifier:
         test_label_set_categorical = to_categorical(test_label_set)
         predicted = self.model.predict(test_image_set)
         self.__writeResultToCSV(zip(test_catalog_ids_set, test_image_paths_set, test_combined_img_path_set, test_label_set, predicted), './predict_result.csv')
-        #for (correct_label, probabilities) in zip(test_label_set, predicted):
-        #    print("correct label = %s, probabilities = [%s, %s]" % (correct_label, probabilities[0], probabilities[1]))
+        for (correct_label, probabilities) in zip(test_label_set, predicted):
+            print("correct label = %s, probabilities = [%s, %s]" % (correct_label, probabilities[0], probabilities[1]))
 
 
     def __writeResultToCSV(self, zipped_result, output_filepath):
@@ -244,10 +250,12 @@ if __name__ == "__main__":
     if len(argv) != 2:
         print('Usage: python %s input_file_path' %argv[0])
         quit()
+    print("Start loading dataset")
     dataset = DatasetLoader(argv[1])
+    print("loading finished")
     galaxyClassifier = GalaxyClassifier()
-    #galaxyClassifier.build_model_lbg()
-    galaxyClassifier.build_model_lae()
+    galaxyClassifier.build_model_lbg()
+    #galaxyClassifier.build_model_lae()
     galaxyClassifier.train(dataset.train_image_set, dataset.train_label_set)
 
     galaxyClassifier.evaluate(dataset.test_image_set, dataset.test_label_set)
