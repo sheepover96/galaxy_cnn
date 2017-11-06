@@ -1,3 +1,4 @@
-_.DS_Store
-.vs_code
-
+.DS_Store
+.vscode
+*.csv
+*.html
