@@ -39,10 +39,13 @@ input_shape = (50, 50, img_channels)
 #input_shape = (24, 24, img_channels)
 
 train_test_split_rate = 0.8
+#train_test_split_rate = 1
 nb_epoch = 20
 batch_size = 10
 validation_split = 0.1
 #validation_split = 0.0
+
+save_mode = True
 
 class DatasetLoader:
     def __init__(self, input_file_path):
@@ -55,15 +58,11 @@ class DatasetLoader:
         img = img[startpos:startpos+pickup_size, startpos:startpos+pickup_size]
         return img
     
-    def save_as_image(image, output_path):
-        image = normalize(image)
-        pil_img = Image.fromarray(numpy.uint8(image))
-        pil_img.save(output_path)
-    
     def __import_dataset(self, input_file_path):
         dataset = []
 
         def load_and_resize(filepath):
+            filepath = "/Users/daiz" + filepath
             hdulist = fits.open(filepath)
             raw_image = hdulist[0].data
             if( raw_image is None ):
@@ -108,8 +107,10 @@ class DatasetLoader:
                 else:
                     image = load_and_resize(row[1])
                 #image = normalize(image)
-                combined_img_path = '/home/daiz/combined_images/{0}_{1}.png'.format(label, row[0].replace('/','_'))
-                save_as_image(image, combined_img_path)
+                combined_filename = '{0}_{1}.png'.format(label, '_'.join(row[1].split('/')[-2:]).replace('/', '_'))
+                combined_img_path = '/Users/daiz/combined_images/{0}'.format(combined_filename)
+                if save_mode:
+                    save_as_image(image, combined_img_path)
                 """
                 if os.path.isdir(path):
                     files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
@@ -187,10 +188,17 @@ class GalaxyClassifier:
         self.model.add(Conv2D(10, 3, 3, border_mode='same', input_shape=(input_shape[0], input_shape[1], input_shape[2])))
         self.model.add(Activation('relu'))
         self.model.add(MaxPooling2D(pool_size=(2, 2), dim_ordering="tf"))
-        #self.model.add(Conv2D(64, 3, 3))
-        #self.model.add(Activation('relu'))
-        #self.model.add(MaxPooling2D(pool_size=(2, 2), dim_ordering="tf"))
+        
+        """
+        self.model.add(Conv2D(32, 3, 3))
+        self.model.add(Activation('relu'))
+        self.model.add(MaxPooling2D(pool_size=(2, 2), dim_ordering="tf"))
         #self.model.add(Dropout(0.25))
+        """
+
+        self.model.add(Conv2D(64, 3, 3))
+        self.model.add(Activation('relu'))
+        self.model.add(MaxPooling2D(pool_size=(2, 2), dim_ordering="tf"))
 
         self.model.add(Flatten())
         self.model.add(Dense(16))
@@ -216,8 +224,8 @@ class GalaxyClassifier:
         test_image_set = test_image_set.reshape(test_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
         test_label_set = to_categorical(test_label_set)
         score = self.model.evaluate(test_image_set, test_label_set, verbose=0)
-        print("%s: %.2f%%" % (self.model.metrics_names[1], score[1] * 100))
-        #plot_model(self.model, to_file='model.png')
+        return score
+        plot_model(self.model, to_file='model.png')
 
     def predictAll(self, test_image_set, test_label_set, test_image_paths_set, test_catalog_ids_set, test_combined_img_path_set):
         test_image_set = np.array(test_image_set)
@@ -239,10 +247,9 @@ class GalaxyClassifier:
                 combined_img_path = result[2]
                 label = result[3]
                 float_formatter = lambda x: "%.4f" % x
-                probabilities = map(float_formatter, result[4])
+                probabilities = list(map(float_formatter, result[4]))
                 # row should be [cat_id, img1, img2, img3, combined_img, correct_label, [probabilties], answer]
-                row = [cat_id, img_paths, combined_img_path, label]
-                row.extend(probabilities)
+                row = [cat_id, img_paths, combined_img_path, label, probabilities]
                 writer.writerow(row)
 
 if __name__ == "__main__":
@@ -258,6 +265,20 @@ if __name__ == "__main__":
     #galaxyClassifier.build_model_lae()
     galaxyClassifier.train(dataset.train_image_set, dataset.train_label_set)
 
-    galaxyClassifier.evaluate(dataset.test_image_set, dataset.test_label_set)
+    trial_count = 1
+    accuracies = []
+    for i in range(trial_count):
+        dataset = DatasetLoader(argv[1])
+        galaxyClassifier = GalaxyClassifier()
+        #galaxyClassifier.build_model_lbg()
+        galaxyClassifier.build_model_lae()
+        galaxyClassifier.train(dataset.train_image_set, dataset.train_label_set)
+
+        score = galaxyClassifier.evaluate(dataset.test_image_set, dataset.test_label_set)
+        print("%s: %.2f%%" % (galaxyClassifier.model.metrics_names[1], score[1] * 100))
+
+        accuracies.append(float(score[1]))
+
+    print("average accuracy = %s" % (sum(accuracies)/len(accuracies)))
 
     galaxyClassifier.predictAll(dataset.test_image_set, dataset.test_label_set, dataset.test_image_paths_set, dataset.test_catalog_ids_set, dataset.test_combined_img_path_set)
