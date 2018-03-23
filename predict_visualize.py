@@ -37,8 +37,22 @@ def to_list(string):
 def make_img_td(filepath):
     return '<td><img src="%s" width="%s" height="%s" title="%s"></td>' % (filepath, img_width, img_height, filepath)
 
+#def normalize(image):
+#    return (image - image.min()).astype(float)*255 / (image.max() - image.min()).astype(float)
+
 def normalize(image):
-    return (image - image.min()).astype(float)*255 / (image.max() - image.min()).astype(float)
+    min_value = image.min()
+    if min_value < 0:
+        image = image - min_value
+        min_value = 0
+    image_center = zoom_img(image, image.shape[0], 5)
+    max_value = image_center.max()
+    #max_value = image.max()
+    #normalized = (image - min_value + max_value/20.0).astype(float)*255 / (max_value - min_value + max_value/20.0).astype(float)
+    normalized = (image - min_value).astype(float)*255 / (max_value - min_value).astype(float)
+    normalized = np.clip(normalized, normalized.min(), 255)
+    print("min = %s, max = %s" % (normalized.min(), normalized.max()))
+    return normalized
 
 def save_as_image(image, output_path):
     image = normalize(image)
@@ -86,7 +100,8 @@ for i, row in enumerate(reader):
     img_tds = ''.join([make_img_td(filepath) for filepath in png_img_paths])
     combined_img_path = row[2].replace('/home/daiz', '/Users/daiz')
     label = row[3]
-    probabilities = [row[4], row[5]]
+    #probabilities = [row[4], row[5]]
+    probabilities = row[4][2:-2].split("', '")
     prob_tds = ''.join(['<td>%s</td>' % prob for prob in probabilities])
     answer = probabilities.index(max(probabilities))
 
