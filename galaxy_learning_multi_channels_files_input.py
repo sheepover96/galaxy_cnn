@@ -67,7 +67,7 @@ class DatasetLoader:
         dataset = []
 
         def load_and_resize(filepath):
-            filepath = file_home + filepath
+            #filepath = file_home + filepath
             hdulist = fits.open(filepath)
             raw_image = hdulist[0].data
             if( raw_image is None ):
