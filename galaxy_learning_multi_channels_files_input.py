@@ -45,6 +45,8 @@ batch_size = 10
 validation_split = 0.1
 #validation_split = 0.0
 
+file_home = "Users/daiz"
+
 save_mode = True
 
 class DatasetLoader:
@@ -62,7 +64,7 @@ class DatasetLoader:
         dataset = []
 
         def load_and_resize(filepath):
-            filepath = "/Users/daiz" + filepath
+            filepath = file_home + filepath
             hdulist = fits.open(filepath)
             raw_image = hdulist[0].data
             if( raw_image is None ):
@@ -108,7 +110,7 @@ class DatasetLoader:
                     image = load_and_resize(row[1])
                 #image = normalize(image)
                 combined_filename = '{0}_{1}.png'.format(label, '_'.join(row[1].split('/')[-2:]).replace('/', '_'))
-                combined_img_path = '/Users/daiz/combined_images/{0}'.format(combined_filename)
+                combined_img_path = file_home + '/combined_images/{0}'.format(combined_filename)
                 if save_mode:
                     save_as_image(image, combined_img_path)
                 """
