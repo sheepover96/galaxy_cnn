@@ -48,7 +48,7 @@ batch_size = 10
 validation_split = 0.1
 #validation_split = 0.0
 
-file_home = "Users/daiz"
+file_home = "/Users/daiz"
 
 save_mode = True
 
