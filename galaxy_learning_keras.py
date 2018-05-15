@@ -27,6 +27,7 @@ import random
 import base64
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 from pandas import DataFrame
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
@@ -161,6 +162,9 @@ class DatasetLoader:
                         elif pixel - dst[y, x, i] > means[i]:
                             result[y, x, i] = dst[y, x, i]
             return result
+
+        img_dataframe = pd.read_csv(input_file)
+        true_dataframe = img_dataframe[]
 
         with open(input_file_path, 'r') as f:
             reader = csv.reader(f)
@@ -382,19 +386,9 @@ if __name__ == "__main__":
     if len(argv) != 2:
         print('Usage: python %s input_file_path' %argv[0])
         quit()
-    """
-    print("Start loading dataset")
-    dataset = DatasetLoader(argv[1])
-    print("loading finished")
-    galaxyClassifier = GalaxyClassifier()
-    galaxyClassifier.build_model_lbg()
-    #galaxyClassifier.build_model_lae()
-    galaxyClassifier.train(dataset.train_image_set, dataset.train_label_set)
-    """
 
     trial_count = 1
     accuracies = []
-    for i in range(trial_count):
         dataset = DatasetLoader(argv[1])
         galaxyClassifier = GalaxyClassifier()
         #galaxyClassifier.build_model_lbg()

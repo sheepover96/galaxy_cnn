@@ -2,3 +2,6 @@
 .vscode
 *.csv
 *.html
+.idea
+.ipynb_checkpoints
+Untitled.ipynb

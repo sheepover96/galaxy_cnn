@@ -5,10 +5,12 @@ import aplpy
 from PIL import Image
 import numpy as np
 
+FILE_HOME = "/Users/sheep/Documents/research/project/hsc"
+
 img_width = 100
 img_height = 100
 
-img_channels = 3
+img_channels = 5
 #raw_size = (48, 48, img_channels)
 raw_size = (239, 239, img_channels)
 #input_shape = (24, 24, img_channels)
@@ -26,7 +28,7 @@ f_write.write("<html>\n")
 f_write.write("\t<table border='1'>\n")
 
 #header = ['catalog id', 'g band', 'r band', 'i band', 'combined img', 'correct label', 'False probability', 'True Probability', 'answer']
-header = ['catalog id', 'raw_image band2', 'band 1', 'band 2', 'band 3', 'combined img', 'correct label', 'False probability', 'True Probability', 'answer']
+header = ['catalog id', 'raw_image band2', 'band 1', 'band 2', 'band 3', 'band 4', 'combined img', 'correct label', 'False probability', 'True Probability', 'answer']
 
 ths = ''.join(['<th>%s</th>' % th for th in header])
 f_write.write('\t\t\t%s\n' % ths)
@@ -94,8 +96,10 @@ for i, row in enumerate(reader):
     paths = to_list(row[1])
     img_paths = []
     for path in paths:
-        replaced = path.replace('/disk/cos/ono', '/Users/daiz/disk/cos/ono')
-        img_paths.append(replaced)
+        print(path)
+        #replaced = path.replace('/disk/cos/ono', '/Users/daiz/disk/cos/ono')
+        path = FILE_HOME + path
+        img_paths.append(path)
     (png_img_paths, raw_image_path) = to_png_and_save(img_paths)
     img_tds = ''.join([make_img_td(filepath) for filepath in png_img_paths])
     combined_img_path = row[2].replace('/home/daiz', '/Users/daiz')
