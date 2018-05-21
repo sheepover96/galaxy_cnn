@@ -74,6 +74,7 @@ class ImageDataset(Dataset):
         image = Image.fromarray(np.uint8(image))
         return image
 
+
     def get(self, idx):
         img_id = self.image_dataframe.iat[idx, 0]
         img_names = self.image_dataframe.iloc[idx, IMG_IDX:IMG_IDX+IMG_CHANNEL]
@@ -85,6 +86,7 @@ class ImageDataset(Dataset):
             image = self.transform(image)
 
         return img_id, img_names, image, label
+
 
     def __getitem__(self, idx):
 
@@ -115,6 +117,19 @@ def get_transform_combination():
     tr.append([transforms.RandomAffine(180, translate=(0.4, 0.4))])
     tr.append([transforms.RandomAffine(180, translate=(0.4, 0.4)), transforms.RandomRotation(300)])
     tr.append([transforms.RandomRotation(300)])
+    return tr
+
+
+def get_transform_combination2():
+    tr = []
+    tr.append([transforms.RandomRotation(45, 45)])
+    tr.append([transforms.RandomRotation(90, 90)])
+    tr.append([transforms.RandomRotation(135, 135)])
+    tr.append([transforms.RandomRotation(180, 180)])
+    tr.append([transforms.RandomRotation(225, 225)])
+    tr.append([transforms.RandomRotation(270, 270)])
+    tr.append([transforms.RandomRotation(315, 315)])
+    tr.append([transforms.RandomHorizontalFlip(1)])
     return tr
 
 
