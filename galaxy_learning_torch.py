@@ -131,6 +131,13 @@ def get_transform_combination2():
     tr.append([transforms.RandomRotation(270, 270)])
     tr.append([transforms.RandomRotation(315, 315)])
     tr.append([transforms.RandomHorizontalFlip(1)])
+    tr.append([transforms.RandomRotation(45, 45), transforms.RandomHorizontalFlip(1)])
+    tr.append([transforms.RandomRotation(90, 90), transforms.RandomHorizontalFlip(1)])
+    tr.append([transforms.RandomRotation(135, 135), transforms.RandomHorizontalFlip(1)])
+    tr.append([transforms.RandomRotation(180, 180), transforms.RandomHorizontalFlip(1)])
+    tr.append([transforms.RandomRotation(225, 225), transforms.RandomHorizontalFlip(1)])
+    tr.append([transforms.RandomRotation(270, 270), transforms.RandomHorizontalFlip(1)])
+    tr.append([transforms.RandomRotation(315, 315), transforms.RandomHorizontalFlip(1)])
     return tr
 
 
@@ -245,11 +252,23 @@ if __name__ == '__main__':
         #transforms.Normalize((0.1307,), (0.3081,))
         ]))
 
+    #false data augumentation
+    tf_combinations = get_transform_combination2()
+    for tf in tf_combinations:
+        tf1 = tf
+        tf1.append(transforms.CenterCrop(IMG_SIZE))
+        tf1.append(transforms.ToTensor())
+        false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
+            tf1
+        ))
+        false_img_dataset = ConcatDataset([false_img_dataset, false_aug])
+
     kfold = KFold(n_splits=KFOLD)
 
     true_dataset_fold = kfold.split(true_img_dataset)
     false_dataset_fold = kfold.split(false_img_dataset)
     accuracy = []
+
     for (true_train_idx, true_test_idx), (false_train_idx, false_test_idx) in\
             zip(true_dataset_fold, false_dataset_fold):
 
@@ -258,16 +277,7 @@ if __name__ == '__main__':
         false_train_data = [false_img_dataset[i] for i in false_train_idx]
         false_test_data = [false_img_dataset[i] for i in false_test_idx]
 
-        tf_combinations = get_transform_combination()
-        for tf in tf_combinations:
-            tf1 = [transforms.CenterCrop(IMG_SIZE)]
-            tf1.extend(tf)
-            tf1.append(transforms.ToTensor())
-            false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
-                tf1
-            ))
-            false_train_data = ConcatDataset([false_train_data, false_aug])
-
+        #image data for prediction
         pr_true_test_data = [true_img_dataset.get(i) for i in true_test_idx]
         pr_false_test_data = [false_img_dataset.get(i) for i in false_test_idx]
 
