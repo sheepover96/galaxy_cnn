@@ -41,6 +41,7 @@ IMG_IDX = 2
 LABEL_IDX = IMG_CHANNEL + IMG_IDX
 
 SAVE_MODE = True
+GPU = True
 
 class ImageDataset(Dataset):
 
@@ -48,7 +49,7 @@ class ImageDataset(Dataset):
         tmp_dataframe = pd.read_csv(csv_file_path, header=None)
         self.image_dataframe = tmp_dataframe[tmp_dataframe[LABEL_IDX] == label]
         if label == 1:
-            self.image_dataframe = self.image_dataframe.sample(n=5000)
+            self.image_dataframe = self.image_dataframe
         self.root_dir = root_dir
         self.transform = transform
 
