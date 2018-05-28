@@ -92,7 +92,6 @@ class DatasetLoader:
             #        for k in range(0, img_channels):
             #            combined_image[i, j, k] = images[k][i, j]
             combined_image = np.array([img for img in images]).transpose(1,2,0)
-            print(combined_image.shape)
             return combined_image
 
         #def normalize(image):

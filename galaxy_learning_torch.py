@@ -27,6 +27,8 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATASET = 'dropout2.csv'
 SAVE_DIR = '/Users/sheep/Documents/research/project/hsc/saved_data'
 
+PNG_IMG_DIR = '/Users/sheep/Documents/research/project/hsc/png_images'
+
 IMG_CHANNEL = 4
 IMG_SIZE = 50
 
@@ -40,7 +42,15 @@ CLASS_NUM = 2
 IMG_IDX = 2
 LABEL_IDX = IMG_CHANNEL + IMG_IDX
 
+
+PNG_LABEL_IDX = 3 + IMG_CHANNEL
+
 SAVE_MODE = True
+GPU = True
+
+
+DATA_TYPE = 'png'
+
 
 class ImageDataset(Dataset):
 
@@ -48,7 +58,7 @@ class ImageDataset(Dataset):
         tmp_dataframe = pd.read_csv(csv_file_path, header=None)
         self.image_dataframe = tmp_dataframe[tmp_dataframe[LABEL_IDX] == label]
         if label == 1:
-            self.image_dataframe = self.image_dataframe.sample(n=5000)
+            self.image_dataframe = self.image_dataframe#.sample(n=200)
         self.root_dir = root_dir
         self.transform = transform
 
@@ -75,7 +85,7 @@ class ImageDataset(Dataset):
         return image
 
 
-    def get(self, idx):
+    def __getitem__(self, idx):
         img_id = self.image_dataframe.iat[idx, 0]
         img_names = self.image_dataframe.iloc[idx, IMG_IDX:IMG_IDX+IMG_CHANNEL]
         img_names = [ path for path in img_names ]
@@ -88,16 +98,37 @@ class ImageDataset(Dataset):
         return img_id, img_names, image, label
 
 
-    def __getitem__(self, idx):
+class PngImageDataset(Dataset):
 
-        label = self.image_dataframe.iat[idx, LABEL_IDX]
-        img_names = self.image_dataframe.iloc[idx, IMG_IDX:IMG_IDX+IMG_CHANNEL]
-        image = self.load_image(img_names)
+    def __init__(self, csv_file_path, root_dir, label, transform=None):
+        tmp_dataframe = pd.read_csv(csv_file_path, header=None)
+        self.image_dataframe = tmp_dataframe[tmp_dataframe[LABEL_IDX] == label]
+        if label == 1:
+            self.image_dataframe = self.image_dataframe#.sample(n=200)
+        self.root_dir = root_dir
+        self.transform = transform
+
+
+    def __len__(self):
+        return len(self.image_dataframe)
+
+
+    def load_image(self, img_name):
+        img_path = sys.path.join(PNG_IMG_DIR, img_name)
+        image = io.imread(img_path)
+        return image
+
+
+    def __getitem__(self, idx):
+        img_id = self.image_dataframe.iat[idx, 0]
+        img_name = self.image_dataframe.iloc[idx, 1]
+        image = self.load_image(img_name)
+        label = self.image_dataframe.iat[idx, PNG_LABEL_IDX]
 
         if self.transform:
             image = self.transform(image)
 
-        return image, label
+        return img_id, img_names, image, label
 
 
 def get_transform_combination():
@@ -120,17 +151,26 @@ def get_transform_combination():
     return tr
 
 
+
 def get_transform_combination2():
     tr = []
-    tr.append([transforms.RandomRotation(45, 45)])
-    tr.append([transforms.RandomRotation(90, 90)])
-    tr.append([transforms.RandomRotation(135, 135)])
-    tr.append([transforms.RandomRotation(180, 180)])
-    tr.append([transforms.RandomRotation(225, 225)])
-    tr.append([transforms.RandomRotation(270, 270)])
-    tr.append([transforms.RandomRotation(315, 315)])
+    tr.append([transforms.RandomRotation((44, 45))])
+    tr.append([transforms.RandomRotation((89, 90))])
+    tr.append([transforms.RandomRotation((134, 135))])
+    tr.append([transforms.RandomRotation((179, 180))])
+    tr.append([transforms.RandomRotation((224, 225))])
+    tr.append([transforms.RandomRotation((269, 270))])
+    tr.append([transforms.RandomRotation((314, 315))])
     tr.append([transforms.RandomHorizontalFlip(1)])
+    tr.append([transforms.RandomRotation((44, 45)), transforms.RandomHorizontalFlip(1)])
+    tr.append([transforms.RandomRotation((89, 90)), transforms.RandomHorizontalFlip(1)])
+    tr.append([transforms.RandomRotation((134, 135)), transforms.RandomHorizontalFlip(1)])
+    tr.append([transforms.RandomRotation((179, 180)), transforms.RandomHorizontalFlip(1)])
+    tr.append([transforms.RandomRotation((224, 225)), transforms.RandomHorizontalFlip(1)])
+    tr.append([transforms.RandomRotation((269, 270)), transforms.RandomHorizontalFlip(1)])
+    tr.append([transforms.RandomRotation((314, 315)), transforms.RandomHorizontalFlip(1)])
     return tr
+
 
 
 class Net(nn.Module):
@@ -159,7 +199,7 @@ def train(epoch, model, optimizer, train_loader):
     model.train()
     correct = 0
     total = 0
-    for batch_idx, (image, label) in enumerate(train_loader):
+    for batch_idx, (img_id, img_names, image, label) in enumerate(train_loader):
         image, label = Variable(image), Variable(label)
         optimizer.zero_grad()
         output = model(image)
@@ -178,7 +218,7 @@ def test(model, test_loader):
     test_loss = 0
     correct = 0
     conf_matrix = [ [ 0 for j in range(CLASS_NUM) ] for i in range(CLASS_NUM)]
-    for (image, label) in test_loader:
+    for (img_id, img_names, image, label) in test_loader:
         with torch.no_grad():
             image, label = Variable(image.float()), Variable(label)
             output = model(image)
@@ -200,14 +240,13 @@ def test(model, test_loader):
 
 
 def write_result(img_ids, img_names, images, labels):
-    pass
 
 
 def predict(model, test_loader):
     model.eval()
     correct = 0
     conf_matrix = [ [ 0 for j in range(CLASS_NUM) ] for i in range(CLASS_NUM)]
-    for (img_id, img_names, image, label) in test_loader:
+    for (img_ids, img_names, image, label) in test_loader:
         image, label = Variable(image.float(), volatile=True), Variable(label)
         output = model(image)
         pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
@@ -244,11 +283,25 @@ if __name__ == '__main__':
         #transforms.Normalize((0.1307,), (0.3081,))
         ]))
 
+    #false data augumentation
+    tf_combinations = get_transform_combination2()
+    for tf in tf_combinations:
+        tf1 = []
+        tf1.extend(tf)
+        tf1.append(transforms.CenterCrop(IMG_SIZE))
+        tf1.append(transforms.ToTensor())
+        false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
+            tf1
+        ))
+        false_img_dataset = ConcatDataset([false_img_dataset, false_aug])
+
     kfold = KFold(n_splits=KFOLD)
 
     true_dataset_fold = kfold.split(true_img_dataset)
     false_dataset_fold = kfold.split(false_img_dataset)
     accuracy = []
+
+    #model training and test prediction with k fold cross validation
     for (true_train_idx, true_test_idx), (false_train_idx, false_test_idx) in\
             zip(true_dataset_fold, false_dataset_fold):
 
@@ -257,18 +310,9 @@ if __name__ == '__main__':
         false_train_data = [false_img_dataset[i] for i in false_train_idx]
         false_test_data = [false_img_dataset[i] for i in false_test_idx]
 
-        tf_combinations = get_transform_combination()
-        for tf in tf_combinations:
-            tf1 = [transforms.CenterCrop(IMG_SIZE)]
-            tf1.extend(tf)
-            tf1.append(transforms.ToTensor())
-            false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
-                tf1
-            ))
-            false_train_data = ConcatDataset([false_train_data, false_aug])
-
-        pr_true_test_data = [true_img_dataset.get(i) for i in true_test_idx]
-        pr_false_test_data = [false_img_dataset.get(i) for i in false_test_idx]
+        #image data for prediction
+        pr_true_test_data = [true_img_dataset[i] for i in true_test_idx]
+        pr_false_test_data = [false_img_dataset[i] for i in false_test_idx]
 
         train_data = ConcatDataset([true_train_data, false_train_data])
         test_data = ConcatDataset([true_test_data, false_test_data])
