@@ -10,9 +10,9 @@ import sys
 DATA_ROOT_DIR = '/Users/sheep/Documents/research/project/hsc'
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DATASET = 'dropout2.csv'
-SAVE_DIR = '/Users/sheep/Documents/research/project/hsc/png_images2/'
-SAVE_FILE_NAME = 'dropout_png2.csv'
+DATASET = 'dropout_test.csv'
+SAVE_DIR = '/Users/sheep/Documents/research/project/hsc/png_images/'
+SAVE_FILE_NAME = 'dropout_png.csv'
 
 IMG_CHANNEL = 4
 

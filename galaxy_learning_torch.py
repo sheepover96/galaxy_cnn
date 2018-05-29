@@ -15,17 +15,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 from statistics import mean
 from PIL import Image
+import csv
 
 from astropy.io import fits
 
 import os
 import sys
 
+TRUE_DATA_NUM = 12263
+
 DATA_ROOT_DIR = '/Users/sheep/Documents/research/project/hsc'
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DATASET = 'dropout2.csv'
-SAVE_DIR = '/Users/sheep/Documents/research/project/hsc/saved_data'
+DATASET = 'dropout_png.csv'
+SAVE_DIR = ''
+RESULT_FILE = 'galaxy_cnn/result/predict_result.csv'
 
 PNG_IMG_DIR = '/Users/sheep/Documents/research/project/hsc/png_images'
 
@@ -33,7 +37,7 @@ IMG_CHANNEL = 4
 IMG_SIZE = 50
 
 BATCH_SIZE = 10
-NEPOCH = 20
+NEPOCH = 1
 KFOLD = 5
 
 TEST_RATE = 0.2
@@ -42,8 +46,7 @@ CLASS_NUM = 2
 IMG_IDX = 2
 LABEL_IDX = IMG_CHANNEL + IMG_IDX
 
-
-PNG_LABEL_IDX = 3 + IMG_CHANNEL
+PNG_LABEL_IDX = 2 + IMG_CHANNEL
 
 SAVE_MODE = True
 GPU = True
@@ -52,7 +55,7 @@ GPU = True
 DATA_TYPE = 'png'
 
 
-class ImageDataset(Dataset):
+class FitsImageDataset(Dataset):
 
     def __init__(self, csv_file_path, root_dir, label, transform=None):
         tmp_dataframe = pd.read_csv(csv_file_path, header=None)
@@ -87,6 +90,7 @@ class ImageDataset(Dataset):
 
     def __getitem__(self, idx):
         img_id = self.image_dataframe.iat[idx, 0]
+        img_name = self.image_dataframe.iat[idx, 1]
         img_names = self.image_dataframe.iloc[idx, IMG_IDX:IMG_IDX+IMG_CHANNEL]
         img_names = [ path for path in img_names ]
         image = self.load_image(img_names)
@@ -95,16 +99,16 @@ class ImageDataset(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        return img_id, img_names, image, label
+        return img_id, img_name, img_names, image, label
 
 
 class PngImageDataset(Dataset):
 
-    def __init__(self, csv_file_path, root_dir, label, transform=None):
+    def __init__(self, csv_file_path, root_dir, label, transform=None, start=0, end=TRUE_DATA_NUM):
         tmp_dataframe = pd.read_csv(csv_file_path, header=None)
         self.image_dataframe = tmp_dataframe[tmp_dataframe[LABEL_IDX] == label]
         if label == 1:
-            self.image_dataframe = self.image_dataframe#.sample(n=200)
+            self.image_dataframe = self.image_dataframe[start:end]#.sample(n=100)
         self.root_dir = root_dir
         self.transform = transform
 
@@ -114,13 +118,16 @@ class PngImageDataset(Dataset):
 
 
     def load_image(self, img_name):
-        img_path = sys.path.join(PNG_IMG_DIR, img_name)
-        image = io.imread(img_path)
+        img_path = os.path.join(PNG_IMG_DIR, img_name)
+        image = Image.open(img_path)
         return image
 
 
     def __getitem__(self, idx):
         img_id = self.image_dataframe.iat[idx, 0]
+        img_names = self.image_dataframe.iloc[idx, 2:IMG_IDX+IMG_CHANNEL]
+        img_names = [ path for path in img_names ]
+        img_names = ','.join(img_names)
         img_name = self.image_dataframe.iloc[idx, 1]
         image = self.load_image(img_name)
         label = self.image_dataframe.iat[idx, PNG_LABEL_IDX]
@@ -128,7 +135,7 @@ class PngImageDataset(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        return img_id, img_names, image, label
+        return img_id, img_name, img_names, image, label
 
 
 def get_transform_combination():
@@ -162,13 +169,13 @@ def get_transform_combination2():
     tr.append([transforms.RandomRotation((269, 270))])
     tr.append([transforms.RandomRotation((314, 315))])
     tr.append([transforms.RandomHorizontalFlip(1)])
-    tr.append([transforms.RandomRotation((44, 45)), transforms.RandomHorizontalFlip(1)])
-    tr.append([transforms.RandomRotation((89, 90)), transforms.RandomHorizontalFlip(1)])
-    tr.append([transforms.RandomRotation((134, 135)), transforms.RandomHorizontalFlip(1)])
-    tr.append([transforms.RandomRotation((179, 180)), transforms.RandomHorizontalFlip(1)])
-    tr.append([transforms.RandomRotation((224, 225)), transforms.RandomHorizontalFlip(1)])
-    tr.append([transforms.RandomRotation((269, 270)), transforms.RandomHorizontalFlip(1)])
-    tr.append([transforms.RandomRotation((314, 315)), transforms.RandomHorizontalFlip(1)])
+    #tr.append([transforms.RandomRotation((44, 45)), transforms.RandomHorizontalFlip(1)])
+    #tr.append([transforms.RandomRotation((89, 90)), transforms.RandomHorizontalFlip(1)])
+    #tr.append([transforms.RandomRotation((134, 135)), transforms.RandomHorizontalFlip(1)])
+    #tr.append([transforms.RandomRotation((179, 180)), transforms.RandomHorizontalFlip(1)])
+    #tr.append([transforms.RandomRotation((224, 225)), transforms.RandomHorizontalFlip(1)])
+    #tr.append([transforms.RandomRotation((269, 270)), transforms.RandomHorizontalFlip(1)])
+    #tr.append([transforms.RandomRotation((314, 315)), transforms.RandomHorizontalFlip(1)])
     return tr
 
 
@@ -189,7 +196,7 @@ class Net(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.conv2_drop(x)
         x = self.fc2(x)
-        return F.sigmoid(x)
+        return F.softmax(x)
 
 
 criterion = nn.CrossEntropyLoss()
@@ -199,7 +206,7 @@ def train(epoch, model, optimizer, train_loader):
     model.train()
     correct = 0
     total = 0
-    for batch_idx, (img_id, img_names, image, label) in enumerate(train_loader):
+    for batch_idx, (img_id, img_name, img_names, image, label) in enumerate(train_loader):
         image, label = Variable(image), Variable(label)
         optimizer.zero_grad()
         output = model(image)
@@ -218,7 +225,7 @@ def test(model, test_loader):
     test_loss = 0
     correct = 0
     conf_matrix = [ [ 0 for j in range(CLASS_NUM) ] for i in range(CLASS_NUM)]
-    for (img_id, img_names, image, label) in test_loader:
+    for (img_id, img_name, img_names, image, label) in test_loader:
         with torch.no_grad():
             image, label = Variable(image.float()), Variable(label)
             output = model(image)
@@ -239,23 +246,38 @@ def test(model, test_loader):
     return test_loss, accuracy
 
 
-def write_result(img_ids, img_names, images, labels):
+def write_result(img_ids, img_name, img_names, labels, probs):
+    print('writing result...')
+    #print(img_ids, img_name, img_names, labels, probs)
+    with open(os.path.join(DATA_ROOT_DIR, RESULT_FILE), 'a') as f:
+        writer = csv.writer(f, lineterminator='\n')
+        for img_id, img_name, src_imgs, label, prob in\
+                zip(img_ids, img_name, img_names, labels, probs):
+
+            result = [str(img_id.item()), img_name, src_imgs]
+            result.append(label.item())
+            for data in prob:
+                result.append(data.item())
+            writer.writerow(result)
+
 
 
 def predict(model, test_loader):
     model.eval()
     correct = 0
     conf_matrix = [ [ 0 for j in range(CLASS_NUM) ] for i in range(CLASS_NUM)]
-    for (img_ids, img_names, image, label) in test_loader:
-        image, label = Variable(image.float(), volatile=True), Variable(label)
-        output = model(image)
-        pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
-        flatten_label = label.data.view_as(pred)
-        correct += pred.eq(flatten_label).long().cpu().sum()
-        print(label, pred)
-        for i in range(CLASS_NUM):
-            for j in range(CLASS_NUM):
-                conf_matrix[i][j] += pred[flatten_label==i].eq(j).long().cpu().sum().item()
+    for (img_ids, img_name, img_names, image, label) in test_loader:
+        with torch.no_grad():
+            image, label = Variable(image.float()), Variable(label)
+            output = model(image)
+            print(output.data[0], 'a')
+            pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
+            flatten_label = label.data.view_as(pred)
+            correct += pred.eq(flatten_label).long().cpu().sum()
+            for i in range(CLASS_NUM):
+                for j in range(CLASS_NUM):
+                    conf_matrix[i][j] += pred[flatten_label==i].eq(j).long().cpu().sum().item()
+            write_result(img_ids, img_name, img_names, label, output.data)
 
     accuracy = 100. * ( correct / len(test_loader.dataset) )
     print(conf_matrix)
@@ -267,98 +289,108 @@ if __name__ == '__main__':
 
     input_file_path = os.path.join(ROOT_DIR, 'dataset', DATASET)
 
-    true_img_dataset = ImageDataset(input_file_path, DATA_ROOT_DIR, 1, transform=transforms.Compose([
-        transforms.CenterCrop(IMG_SIZE),
-        transforms.ToTensor(),
-        #transforms.Normalize((10,), (50,))
-        ]))
-
-    false_img_dataset = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose([
-        transforms.CenterCrop(IMG_SIZE),
-        #transforms.RandomHorizontalFlip(),
-        #transforms.RandomVerticalFlip(),
-        #transforms.RandomRotation(300),
-        transforms.ToTensor(),
-        #transforms.RandomAffine(180, translate=(10, 10)),
-        #transforms.Normalize((0.1307,), (0.3081,))
-        ]))
-
-    #false data augumentation
-    tf_combinations = get_transform_combination2()
-    for tf in tf_combinations:
-        tf1 = []
-        tf1.extend(tf)
-        tf1.append(transforms.CenterCrop(IMG_SIZE))
-        tf1.append(transforms.ToTensor())
-        false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
-            tf1
-        ))
-        false_img_dataset = ConcatDataset([false_img_dataset, false_aug])
-
-    kfold = KFold(n_splits=KFOLD)
-
-    true_dataset_fold = kfold.split(true_img_dataset)
-    false_dataset_fold = kfold.split(false_img_dataset)
-    accuracy = []
-
-    #model training and test prediction with k fold cross validation
-    for (true_train_idx, true_test_idx), (false_train_idx, false_test_idx) in\
-            zip(true_dataset_fold, false_dataset_fold):
-
-        true_train_data = [true_img_dataset[i] for i in true_train_idx]
-        true_test_data = [true_img_dataset[i] for i in true_test_idx]
-        false_train_data = [false_img_dataset[i] for i in false_train_idx]
-        false_test_data = [false_img_dataset[i] for i in false_test_idx]
-
-        #image data for prediction
-        pr_true_test_data = [true_img_dataset[i] for i in true_test_idx]
-        pr_false_test_data = [false_img_dataset[i] for i in false_test_idx]
-
-        train_data = ConcatDataset([true_train_data, false_train_data])
-        test_data = ConcatDataset([true_test_data, false_test_data])
-        pr_test_data = ConcatDataset([pr_true_test_data, pr_false_test_data])
-
-        train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
-        test_loader = DataLoader(test_data, batch_size=100, shuffle=True)
-        pr_test_loader = DataLoader(pr_test_data, batch_size=100, shuffle=True)
-
-        print('N TRUE TRAIN: {}\nN TRUE TEST: {}'.format(len(true_train_data), len(true_test_data)))
-        print('N FALSE TRAIN: {}\nN FALSE TEST: {}'.format(len(false_train_data), len(false_test_data)))
-
-        model = Net()
-        optimizer = optim.Adam(model.parameters(), lr=0.001)
-
-        test_acc = []
-        test_loss = []
-
-        for epoch in range(1, NEPOCH + 1):
-            train(epoch, model, optimizer, train_loader)
-            tloss, acc = test(model, test_loader)
-            test_loss.append(tloss)
-            test_acc.append(acc)
+    if DATA_TYPE == 'png':
+        ImageDataset = PngImageDataset
+    else:
+        ImageDataset = FitsImageDataset
 
 
-        acc, matrix = predict(model, pr_test_loader)
-        accuracy.append(acc)
-        for i in range(CLASS_NUM):
-            for j in range(CLASS_NUM):
-                print(matrix[i][j], end=', ')
-            print('\n')
+    for i in range(5):
+        start = i * ( TRUE_DATA_NUM//5 )
+        end = (i + 1) * ( TRUE_DATA_NUM//5 )
+        true_img_dataset = ImageDataset(input_file_path, DATA_ROOT_DIR, 1, transform=transforms.Compose([
+            transforms.CenterCrop(IMG_SIZE),
+            transforms.ToTensor(),
+            #transforms.Normalize((10,), (50,))
+            ]), start=start, end=end)
 
-    print('mean', accuracy)
-    fig, (figL, figR) = plt.subplots(ncols=2, figsize=(10,4))
-    figL.plot(np.array([i for i in range(NEPOCH)]), np.array(test_loss), marker='o', linewidth=2)
-    figL.set_title('test loss')
-    figL.set_xlabel('epoch')
-    figL.set_ylabel('loss')
-    figL.set_xlim(0, NEPOCH)
-    figL.grid(True)
 
-    figR.plot(np.array([i for i in range(NEPOCH)]), np.array(test_acc), marker='o', linewidth=2)
-    figR.set_title('test accuracy')
-    figR.set_xlabel('epoch')
-    figR.set_ylabel('accuracy')
-    figR.set_xlim(0, NEPOCH)
-    figR.grid(True)
+        false_img_dataset = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose([
+            transforms.CenterCrop(IMG_SIZE),
+            #transforms.RandomHorizontalFlip(),
+            #transforms.RandomVerticalFlip(),
+            #transforms.RandomRotation(300),
+            transforms.ToTensor(),
+            #transforms.RandomAffine(180, translate=(10, 10)),
+            #transforms.Normalize((0.1307,), (0.3081,))
+            ]))
 
-    fig.show()
+        #false data augumentation
+        tf_combinations = get_transform_combination2()
+        for tf in tf_combinations:
+            tf1 = []
+            tf1.extend(tf)
+            tf1.append(transforms.CenterCrop(IMG_SIZE))
+            tf1.append(transforms.ToTensor())
+            false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
+                tf1
+            ))
+            false_img_dataset = ConcatDataset([false_img_dataset, false_aug])
+
+        kfold = KFold(n_splits=KFOLD)
+
+        true_dataset_fold = kfold.split(true_img_dataset)
+        false_dataset_fold = kfold.split(false_img_dataset)
+        accuracy = []
+
+        #model training and test prediction with k fold cross validation
+        for (true_train_idx, true_test_idx), (false_train_idx, false_test_idx) in\
+                zip(true_dataset_fold, false_dataset_fold):
+
+            true_train_data = [true_img_dataset[i] for i in true_train_idx]
+            true_test_data = [true_img_dataset[i] for i in true_test_idx]
+            false_train_data = [false_img_dataset[i] for i in false_train_idx]
+            false_test_data = [false_img_dataset[i] for i in false_test_idx]
+
+            #image data for prediction
+            pr_true_test_data = [true_img_dataset[i] for i in true_test_idx]
+            pr_false_test_data = [false_img_dataset[i] for i in false_test_idx]
+
+            train_data = ConcatDataset([true_train_data, false_train_data])
+            test_data = ConcatDataset([true_test_data, false_test_data])
+            pr_test_data = ConcatDataset([pr_true_test_data, pr_false_test_data])
+
+            train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
+            test_loader = DataLoader(test_data, batch_size=100, shuffle=True)
+            pr_test_loader = DataLoader(pr_test_data, batch_size=100, shuffle=False)
+
+            print('N TRUE TRAIN: {}\nN TRUE TEST: {}'.format(len(true_train_data), len(true_test_data)))
+            print('N FALSE TRAIN: {}\nN FALSE TEST: {}'.format(len(false_train_data), len(false_test_data)))
+
+            model = Net()
+            optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+            test_acc = []
+            test_loss = []
+
+            for epoch in range(1, NEPOCH + 1):
+                train(epoch, model, optimizer, train_loader)
+                tloss, acc = test(model, test_loader)
+                test_loss.append(tloss)
+                test_acc.append(acc)
+
+
+            acc, matrix = predict(model, pr_test_loader)
+            accuracy.append(acc)
+            for i in range(CLASS_NUM):
+                for j in range(CLASS_NUM):
+                    print(matrix[i][j], end=', ')
+                print('\n')
+
+        print('mean', accuracy)
+        fig, (figL, figR) = plt.subplots(ncols=2, figsize=(10,4))
+        figL.plot(range(1, 1+NEPOCH), np.array(test_loss), marker='o', linewidth=2)
+        figL.set_title('test loss')
+        figL.set_xlabel('epoch')
+        figL.set_ylabel('loss')
+        figL.set_xlim(0, NEPOCH)
+        figL.grid(True)
+
+        figR.plot(np.array([i for i in range(NEPOCH)]), np.array(test_acc), marker='o', linewidth=2)
+        figR.set_title('test accuracy')
+        figR.set_xlabel('epoch')
+        figR.set_ylabel('accuracy')
+        figR.set_xlim(0, NEPOCH)
+        figR.grid(True)
+
+        fig.show()
