@@ -278,6 +278,8 @@ def predict(model, test_loader):
     conf_matrix = [ [ 0 for j in range(CLASS_NUM) ] for i in range(CLASS_NUM)]
     for (img_ids, img_name, img_names, image, label) in test_loader:
         with torch.no_grad():
+            if GPU:
+                image, label = image.cuda(), label.cuda()
             image, label = Variable(image.float()), Variable(label)
             output = model(image)
             print(output.data[0], 'a')
@@ -380,7 +382,6 @@ if __name__ == '__main__':
                 tloss, acc = test(model, test_loader)
                 test_loss.append(tloss)
                 test_acc.append(acc)
-
 
             acc, matrix = predict(model, pr_test_loader)
             accuracy.append(acc)
