@@ -37,7 +37,7 @@ IMG_CHANNEL = 4
 IMG_SIZE = 50
 
 BATCH_SIZE = 10
-NEPOCH = 1
+NEPOCH = 100
 KFOLD = 5
 
 TEST_RATE = 0.2
@@ -259,7 +259,6 @@ def write_result(img_ids, img_name, img_names, labels, probs):
             for data in prob:
                 result.append(data.item())
             writer.writerow(result)
-
 
 
 def predict(model, test_loader):

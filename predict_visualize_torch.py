@@ -1,5 +1,7 @@
 import sys
+import os
 import csv
+import pandas as pd
 from astropy.io import fits
 import aplpy
 from PIL import Image
@@ -20,9 +22,8 @@ argv = sys.argv
 
 inputfile = argv[1]
 outputfile = argv[2]
-f_read = open(inputfile, "r")
+result_df = pd.read_csv(inputfile, quotechar='#')
 f_write = open(outputfile, "w")
-reader = csv.reader(f_read)
 
 f_write.write("<html>\n")
 f_write.write("\t<table border='1'>\n")
@@ -91,23 +92,22 @@ def to_png_and_save(fits_paths):
         count = count + 1
     return (output_paths, raw_image_path)
 
-for i, row in enumerate(reader):
-    cat_id = row[0]
-    paths = to_list(row[1])
-    img_paths = []
-    for path in paths:
-        print(path)
-        #replaced = path.replace('/disk/cos/ono', '/Users/daiz/disk/cos/ono')
-        path = FILE_HOME + path
-        img_paths.append(path)
-    (png_img_paths, raw_image_path) = to_png_and_save(img_paths)
+for idx, row_data in result_df.iterrows():
+    img_id = row_data[0]
+
+    png_name = os.path.join( FILE_HOME, 'png_images', row_data[1] )
+
+    fits_paths = row_data[2:2+img_channels]
+    fits_paths = [ FILE_HOME + path.replace('"', '') for path in fits_paths ]
+    (png_img_paths, raw_image_path) = to_png_and_save(fits_paths)
     img_tds = ''.join([make_img_td(filepath) for filepath in png_img_paths])
-    combined_img_path = row[2].replace('/home/daiz', '/Users/daiz')
-    label = row[3]
-    #probabilities = [row[4], row[5]]
-    probabilities = row[4][2:-2].split("', '")
-    prob_tds = ''.join(['<td>%s</td>' % prob for prob in probabilities])
-    answer = probabilities.index(max(probabilities))
+
+    label = row_data[ 2 + img_channels ]
+
+    probs = row_data[3+img_channels:5+img_channels]
+    probs = [prob for prob in probs]
+    prob_tds = ''.join(['<td>%s</td>' % prob for prob in probs])
+    answer = probs.index(max(probs))
 
     if answer == int(label):
         color = "#2EFE64"
@@ -115,16 +115,18 @@ for i, row in enumerate(reader):
         color = "#F78181"
 
     f_write.write('\t\t<tr bgcolor="%s">\n' % color)
-    f_write.write("\t\t\t<td>%s</td>\n" % cat_id)
+    f_write.write("\t\t\t<td>%s</td>\n" % img_id)
     f_write.write('\t\t\t%s\n' % make_img_td(raw_image_path))
     f_write.write('\t\t\t%s\n' % img_tds)
-    f_write.write('\t\t\t%s\n' % make_img_td(combined_img_path))
+    f_write.write('\t\t\t%s\n' % make_img_td(png_name))
     f_write.write("\t\t\t<td>%s</td>\n" % label)
     f_write.write('\t\t\t%s\n' % prob_tds)
     f_write.write('\t\t\t<td>%s</td>\n' % answer)
     f_write.write("\t\t</tr>\n")
 
-    print("No. %s finished" % i)
+    print("No. %s finished" % idx)
 
 f_write.write("\t</table>\n")
 f_write.write("</html>\n")
+
+f_write.close()
