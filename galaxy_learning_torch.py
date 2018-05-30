@@ -392,4 +392,4 @@ if __name__ == '__main__':
         figR.set_xlim(0, NEPOCH)
         figR.grid(True)
 
-        fig.show()
+        #fig.show()
