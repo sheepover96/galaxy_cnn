@@ -1,6 +1,5 @@
 .DS_Store
 .vscode
-*.csv
 *.html
 .idea
 .ipynb_checkpoints

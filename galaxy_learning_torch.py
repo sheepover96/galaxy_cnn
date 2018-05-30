@@ -22,16 +22,24 @@ from astropy.io import fits
 import os
 import sys
 
+GPU = torch.cuda.is_available()
+
 TRUE_DATA_NUM = 12263
 
-DATA_ROOT_DIR = '/Users/sheep/Documents/research/project/hsc'
+if not GPU:
+    DATA_ROOT_DIR = '/Users/sheep/Documents/research/project/hsc'
+else:
+    DATA_ROOT_DIR = '/home/okura/research/project/hsc'
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DATASET = 'dropout_png.csv'
 SAVE_DIR = ''
 RESULT_FILE = 'galaxy_cnn/result/predict_result.csv'
 
-PNG_IMG_DIR = '/Users/sheep/Documents/research/project/hsc/png_images'
+if not GPU:
+    PNG_IMG_DIR = '/Users/sheep/Documents/research/project/hsc/png_images'
+else:
+    PNG_IMG_DIR = '/home/okura/research/project/hsc/png_images'
 
 IMG_CHANNEL = 4
 IMG_SIZE = 50
@@ -49,7 +57,6 @@ LABEL_IDX = IMG_CHANNEL + IMG_IDX
 PNG_LABEL_IDX = 2 + IMG_CHANNEL
 
 SAVE_MODE = True
-GPU = True
 
 
 DATA_TYPE = 'png'
@@ -196,7 +203,7 @@ class Net(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.conv2_drop(x)
         x = self.fc2(x)
-        return F.softmax(x)
+        return F.softmax(x, dim=1)
 
 
 criterion = nn.CrossEntropyLoss()
@@ -207,6 +214,8 @@ def train(epoch, model, optimizer, train_loader):
     correct = 0
     total = 0
     for batch_idx, (img_id, img_name, img_names, image, label) in enumerate(train_loader):
+        if GPU:
+            image, label = image.cuda(), label.cuda()
         image, label = Variable(image), Variable(label)
         optimizer.zero_grad()
         output = model(image)
@@ -227,6 +236,8 @@ def test(model, test_loader):
     conf_matrix = [ [ 0 for j in range(CLASS_NUM) ] for i in range(CLASS_NUM)]
     for (img_id, img_name, img_names, image, label) in test_loader:
         with torch.no_grad():
+            if GPU:
+                image, label = image.cuda(), label.cuda()
             image, label = Variable(image.float()), Variable(label)
             output = model(image)
             test_loss += criterion(output, label).data.item() # sum up batch loss
@@ -357,6 +368,8 @@ if __name__ == '__main__':
             print('N FALSE TRAIN: {}\nN FALSE TEST: {}'.format(len(false_train_data), len(false_test_data)))
 
             model = Net()
+            if GPU:
+                model.cuda()
             optimizer = optim.Adam(model.parameters(), lr=0.001)
 
             test_acc = []
@@ -392,4 +405,7 @@ if __name__ == '__main__':
         figR.set_xlim(0, NEPOCH)
         figR.grid(True)
 
+        graph_name = '{}_result.png'.format(i)
+
+        fig.savefig(os.path.join('result', 'graph', graph_name))
         #fig.show()
