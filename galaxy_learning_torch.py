@@ -34,7 +34,8 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DATASET = 'dropout_png.csv'
 SAVE_DIR = ''
-RESULT_FILE = 'galaxy_cnn/result/predict_result.csv'
+RESULT_FILE_PATH = 'galaxy_cnn/result/'
+RESULT_FILE = 'predict_result.csv'
 
 if not GPU:
     PNG_IMG_DIR = '/Users/sheep/Documents/research/project/hsc/png_images'
@@ -386,7 +387,8 @@ if __name__ == '__main__':
                 test_acc.append(acc)
 
             result_file = '{}_{}_{}'.format(split, fold_idx, RESULT_FILE)
-            acc, matrix = predict(model, pr_test_loader, result_file)
+            result_file_path = os.path.join(RESULT_FILE_PATH, result_file)
+            acc, matrix = predict(model, pr_test_loader, result_file_path)
             accuracy.append(acc.item())
             for i in range(CLASS_NUM):
                 for j in range(CLASS_NUM):
