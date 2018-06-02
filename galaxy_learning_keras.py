@@ -388,32 +388,32 @@ if __name__ == "__main__":
 
     trial_count = 1
     accuracies = []
-        dataset = DatasetLoader(argv[1])
-        galaxyClassifier = GalaxyClassifier()
-        #galaxyClassifier.build_model_lbg()
-        galaxyClassifier.build_model_lae()
-        #galaxyClassifier.build_model_dropout()
-        hist = galaxyClassifier.train(dataset.train_image_set, dataset.train_label_set)
+    dataset = DatasetLoader(argv[1])
+    galaxyClassifier = GalaxyClassifier()
+    #galaxyClassifier.build_model_lbg()
+    galaxyClassifier.build_model_lae()
+    #galaxyClassifier.build_model_dropout()
+    hist = galaxyClassifier.train(dataset.train_image_set, dataset.train_label_set)
 
-        #galaxyClassifier.visualizeFeatureMaps(2)
+    #galaxyClassifier.visualizeFeatureMaps(2)
 
-        acc = hist.history['acc']
-        val_acc = hist.history['val_acc']
+    acc = hist.history['acc']
+    val_acc = hist.history['val_acc']
 
-        epochs = len(acc)
-        #plt.plot(range(epochs), acc, marker='.', label='acc')
-        #plt.plot(range(epochs), val_acc, marker='.', label='val_acc')
-        #plt.legend(loc='best')
-        #plt.grid()
-        #plt.xlabel('epoch')
-        #plt.ylabel('acc')
-        #plt.show()
-        #plt.savefig("accuracy.png")
+    epochs = len(acc)
+    #plt.plot(range(epochs), acc, marker='.', label='acc')
+    #plt.plot(range(epochs), val_acc, marker='.', label='val_acc')
+    #plt.legend(loc='best')
+    #plt.grid()
+    #plt.xlabel('epoch')
+    #plt.ylabel('acc')
+    #plt.show()
+    #plt.savefig("accuracy.png")
 
-        score = galaxyClassifier.evaluate(dataset.test_image_set, dataset.test_label_set)
-        print("%s: %.2f%%" % (galaxyClassifier.model.metrics_names[1], score[1] * 100))
+    score = galaxyClassifier.evaluate(dataset.test_image_set, dataset.test_label_set)
+    print("%s: %.2f%%" % (galaxyClassifier.model.metrics_names[1], score[1] * 100))
 
-        accuracies.append(float(score[1]))
+    accuracies.append(float(score[1]))
 
     print("average accuracy = %s" % (sum(accuracies)/len(accuracies)))
 

@@ -310,6 +310,8 @@ if __name__ == '__main__':
     for i in range(5):
         start = i * ( TRUE_DATA_NUM//5 )
         end = (i + 1) * ( TRUE_DATA_NUM//5 )
+        print('start:', start)
+        print('end:', end)
         true_img_dataset = ImageDataset(input_file_path, DATA_ROOT_DIR, 1, transform=transforms.Compose([
             transforms.CenterCrop(IMG_SIZE),
             transforms.ToTensor(),
@@ -372,7 +374,7 @@ if __name__ == '__main__':
             model = Net()
             if GPU:
                 model.cuda()
-            optimizer = optim.Adam(model.parameters(), lr=0.001)
+            optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
             test_acc = []
             test_loss = []
@@ -408,5 +410,6 @@ if __name__ == '__main__':
 
         graph_name = '{}_result.png'.format(i)
 
+        print('save result image:', graph_name)
         fig.savefig(os.path.join('result', 'graph', graph_name))
         #fig.show()
