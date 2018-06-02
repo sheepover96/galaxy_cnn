@@ -257,10 +257,10 @@ def test(model, test_loader):
     return test_loss, accuracy
 
 
-def write_result(img_ids, img_name, img_names, labels, probs):
+def write_result(img_ids, img_name, img_names, labels, probs, result_file):
     print('writing result...')
     #print(img_ids, img_name, img_names, labels, probs)
-    with open(os.path.join(DATA_ROOT_DIR, RESULT_FILE), 'a') as f:
+    with open(os.path.join(DATA_ROOT_DIR, result_file), 'a') as f:
         writer = csv.writer(f, lineterminator='\n')
         for img_id, img_name, src_imgs, label, prob in\
                 zip(img_ids, img_name, img_names, labels, probs):
@@ -272,7 +272,7 @@ def write_result(img_ids, img_name, img_names, labels, probs):
             writer.writerow(result)
 
 
-def predict(model, test_loader):
+def predict(model, test_loader, result_file):
     model.eval()
     correct = 0
     conf_matrix = [ [ 0 for j in range(CLASS_NUM) ] for i in range(CLASS_NUM)]
@@ -289,7 +289,7 @@ def predict(model, test_loader):
             for i in range(CLASS_NUM):
                 for j in range(CLASS_NUM):
                     conf_matrix[i][j] += pred[flatten_label==i].eq(j).long().cpu().sum().item()
-            write_result(img_ids, img_name, img_names, label, output.data)
+            write_result(img_ids, img_name, img_names, label, output.data, result_file)
 
     accuracy = 100. * ( correct / len(test_loader.dataset) )
     print(conf_matrix)
@@ -307,9 +307,9 @@ if __name__ == '__main__':
         ImageDataset = FitsImageDataset
 
 
-    for i in range(5):
-        start = i * ( TRUE_DATA_NUM//5 )
-        end = (i + 1) * ( TRUE_DATA_NUM//5 )
+    for split in range(5):
+        start = split * ( TRUE_DATA_NUM//5 )
+        end = (split + 1) * ( TRUE_DATA_NUM//5 )
         print('start:', start)
         print('end:', end)
         true_img_dataset = ImageDataset(input_file_path, DATA_ROOT_DIR, 1, transform=transforms.Compose([
@@ -348,8 +348,8 @@ if __name__ == '__main__':
         accuracy = []
 
         #model training and test prediction with k fold cross validation
-        for (true_train_idx, true_test_idx), (false_train_idx, false_test_idx) in\
-                zip(true_dataset_fold, false_dataset_fold):
+        for fold_idx, (true_train_idx, true_test_idx), (false_train_idx, false_test_idx) in\
+                enumerate( zip(true_dataset_fold, false_dataset_fold) ):
 
             true_train_data = [true_img_dataset[i] for i in true_train_idx]
             true_test_data = [true_img_dataset[i] for i in true_test_idx]
@@ -385,31 +385,32 @@ if __name__ == '__main__':
                 test_loss.append(tloss)
                 test_acc.append(acc)
 
-            acc, matrix = predict(model, pr_test_loader)
+            result_file = '{}_{}_{}'.format(split, fold_idx, RESULT_FILE)
+            acc, matrix = predict(model, pr_test_loader, result_file)
             accuracy.append(acc)
             for i in range(CLASS_NUM):
                 for j in range(CLASS_NUM):
                     print(matrix[i][j], end=', ')
                 print('\n')
+            fig, (figL, figR) = plt.subplots(ncols=2, figsize=(10,4))
+            figL.plot(range(1, 1+NEPOCH), np.array(test_loss), marker='o', linewidth=2)
+            figL.set_title('test loss')
+            figL.set_xlabel('epoch')
+            figL.set_ylabel('loss')
+            figL.set_xlim(0, NEPOCH)
+            figL.grid(True)
+
+            figR.plot(np.array(range(NEPOCH)), np.array(test_acc), marker='o', linewidth=2)
+            figR.set_title('test accuracy')
+            figR.set_xlabel('epoch')
+            figR.set_ylabel('accuracy')
+            figR.set_xlim(0, NEPOCH)
+            figR.grid(True)
+
+            graph_name = '{}_{}_result.png'.format(split, fold_idx)
+
+            print('save result image:', graph_name)
+            fig.savefig(os.path.join('result', 'graph', graph_name))
 
         print('mean', accuracy)
-        fig, (figL, figR) = plt.subplots(ncols=2, figsize=(10,4))
-        figL.plot(range(1, 1+NEPOCH), np.array(test_loss), marker='o', linewidth=2)
-        figL.set_title('test loss')
-        figL.set_xlabel('epoch')
-        figL.set_ylabel('loss')
-        figL.set_xlim(0, NEPOCH)
-        figL.grid(True)
-
-        figR.plot(np.array([i for i in range(NEPOCH)]), np.array(test_acc), marker='o', linewidth=2)
-        figR.set_title('test accuracy')
-        figR.set_xlabel('epoch')
-        figR.set_ylabel('accuracy')
-        figR.set_xlim(0, NEPOCH)
-        figR.grid(True)
-
-        graph_name = '{}_result.png'.format(i)
-
-        print('save result image:', graph_name)
-        fig.savefig(os.path.join('result', 'graph', graph_name))
         #fig.show()
