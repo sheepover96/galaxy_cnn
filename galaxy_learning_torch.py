@@ -348,7 +348,7 @@ if __name__ == '__main__':
         accuracy = []
 
         #model training and test prediction with k fold cross validation
-        for fold_idx, (true_train_idx, true_test_idx), (false_train_idx, false_test_idx) in\
+        for fold_idx, ( (true_train_idx, true_test_idx), (false_train_idx, false_test_idx) ) in\
                 enumerate( zip(true_dataset_fold, false_dataset_fold) ):
 
             true_train_data = [true_img_dataset[i] for i in true_train_idx]
@@ -387,7 +387,7 @@ if __name__ == '__main__':
 
             result_file = '{}_{}_{}'.format(split, fold_idx, RESULT_FILE)
             acc, matrix = predict(model, pr_test_loader, result_file)
-            accuracy.append(acc)
+            accuracy.append(acc.item())
             for i in range(CLASS_NUM):
                 for j in range(CLASS_NUM):
                     print(matrix[i][j], end=', ')
