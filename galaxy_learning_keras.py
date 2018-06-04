@@ -1,16 +1,16 @@
+from keras.callbacks import EarlyStopping
 from keras.layers.convolutional import Conv2D
 from keras.layers.convolutional import MaxPooling2D
-from keras.layers.core import Activation
-from keras.layers.core import Dense
-from keras.layers.core import Dropout
-from keras.layers.core import Flatten
+from keras.layers.core import Activation, Dense, Dropout, Flatten
 from keras.models import Sequential, load_model
-from keras.utils import np_utils
-from keras.utils.np_utils import to_categorical
 from keras.optimizers import Adam
-from keras.callbacks import EarlyStopping
-from keras.utils import plot_model
 from keras.preprocessing.image import ImageDataGenerator
+from keras.preprocessing.image import array_to_img, img_to_array, list_pictures, load_img
+from keras.utils import np_utils
+from keras.utils import plot_model
+from keras.utils.np_utils import to_categorical
+
+from torchvision import transforms
 
 from astropy.io import fits
 
@@ -19,28 +19,28 @@ from PIL import Image
 import pydot
 import graphviz
 
-import os
-import numpy
-import sys
 import csv
 import random
-import base64
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from pandas import DataFrame
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold
 from sklearn.preprocessing import MinMaxScaler
-from torchvision import transforms
 
-class_num = 2 # the number of classes for classification
+import os
+import sys
+
+CLASS_NUM = 2 # the number of classes for classification
 
 #img_channels = 1
 img_channels = 4
+IMG_CHANNEL = 4
+IMG_SIZE = 50
+
 #input_shape = (1, 239, 239) # ( channels, cols, rows )
 raw_size = (239, 239, img_channels)
 #raw_size = (48, 48, img_channels)
-input_shape = (50, 50, img_channels)
+input_shape = (50, 50, IMG_CHANNEL)
 #input_shape = (24, 24, img_channels)
 
 train_test_split_rate = 0.8
@@ -50,18 +50,69 @@ batch_size = 10
 validation_split = 0.1
 #validation_split = 0.0
 
+
+BATCH_SIZE = 10
+NEPOCH = 100
+KFOLD = 5
+
+IMG_IDX = 2
+LABEL_IDX = IMG_CHANNEL + IMG_IDX
+PNG_LABEL_IDX = 2 + IMG_CHANNEL
+
 FILE_HOME = "/Users/sheep/Documents/research/project/hsc"
 
+DATA_ROOT_DIR = '/Users/sheep/Documents/research/project/hsc'
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+PNG_IMG_DIR = '/Users/sheep/Documents/research/project/hsc/png_images'
+
 SAVE_DIR = '/Users/sheep/documents/research/project/hsc/saved_data'
-transforms.CenterCrop
 
 save_mode = True
 
 class DatasetLoader:
-    def __init__(self, input_file_path):
-        self.train_image_set, self.train_label_set, self.train_image_paths_set, self.train_catalog_ids_set, self.train_combined_img_path_set, \
-        self.test_image_set, self.test_label_set, self.test_image_paths_set, self.test_catalog_ids_set, self.test_combined_img_path_set \
-            = self.__import_dataset(input_file_path)
+
+    def __init__(self, csv_file_path, root_dir):
+        data_frame = pd.read_csv(csv_file_path, header=None)
+        self.dataset_frame_list = []
+        self.dataset = []
+        for i in range(CLASS_NUM):
+            if i == 1:
+                tmp_dataframe = data_frame[data_frame[LABEL_IDX]==i]
+                self.dataset_frame_list.append(tmp_dataframe[1:5000])
+            else:
+                self.dataset_frame_list.append(data_frame[data_frame[LABEL_IDX]==i])
+            self.dataset.append( self.create_dataset(i) )
+
+    def create_dataset(self, label):
+        imgCrop = transforms.CenterCrop(IMG_SIZE)
+        data_frame = self.get_dataframe(label)
+        data_list = []
+
+        for idx, row_data in data_frame.iterrows():
+            img_no = str(row_data[0])
+
+            png_img_name = row_data[1]
+
+            img_names = row_data[2:IMG_IDX+IMG_CHANNEL]
+            img_names = [ path for path in img_names ]
+
+            label = row_data[PNG_LABEL_IDX]
+            label = np_utils.to_categorical(label, num_classes=CLASS_NUM)
+
+            image = Image.open(os.path.join(PNG_IMG_DIR, png_img_name))
+            image = imgCrop(image)
+            image = np.array(image)
+
+            data_list.append( (label, image, img_no, png_img_name, img_names) )
+
+        return data_list
+
+    def get_dataframe(self, label):
+        return self.dataset_frame_list[label]
+
+    def get_dataset(self, label):
+        return self.dataset[label]
 
     def zoom_img(self, img, original_size, pickup_size):
         startpos = int(original_size / 2) - int(pickup_size / 2)
@@ -69,220 +120,58 @@ class DatasetLoader:
         return img
 
 
-    def __import_dataset(self, input_file_path):
-        dataset = []
+    def median_filter(image, ksize):
+        # 畳み込み演算をしない領域の幅
+        d = int((ksize - 1) / 2)
+        h, w = image.shape[0], image.shape[1]
 
-        def load_and_resize(filepath):
-            #filepath = FILE_HOME + filepath
-            #データのロード
-            hdulist = fits.open(filepath)
-            raw_image = hdulist[0].data
-            if( raw_image is None ):
-                raw_image = hdulist[1].data
-            #image = np.resize(raw_image, [raw_size[0], raw_size[1]])
-            image = raw_image
-            image = self.zoom_img(image, raw_size[0], input_shape[0])
-            return image
+        # 出力画像用の配列（要素は入力画像と同じ）
+        dst = image.copy()
 
-        def combine_images(images):
-            (rows, cols) = (images[0].shape[0], images[0].shape[1])
-            #combined_image = np.zeros((rows, cols, img_channels))
-            #for i in range(0, rows):
-            #    for j in range(0, cols):
-            #        for k in range(0, img_channels):
-            #            combined_image[i, j, k] = images[k][i, j]
-            combined_image = np.array([img for img in images]).transpose(1,2,0)
-            return combined_image
+        for y in range(d, h - d):
+            for x in range(d, w - d):
+                # 近傍にある画素値の中央値を出力画像の画素値に設定
+                dst[y][x] = np.median(image[y - d:y + d + 1, x - d:x + d + 1])
 
-        #def normalize(image):
-        #    return (image - image.min()).astype(float)*255 / (image.max() - image.min()).astype(float)
+        return dst
 
-        def normalize(image):
-            min_value = image.min()
-            if min_value < 0:
-                image = image - min_value
-                min_value = 0
-            image_center = self.zoom_img(image, image.shape[0], 5)
-            max_value = image_center.max()
-            #max_value = image.max()
-            #normalized = (image - min_value + max_value/20.0).astype(float)*255 / (max_value - min_value + max_value/20.0).astype(float)
-            normalized = (image - min_value).astype(float)*255 / (max_value - min_value).astype(float)
-            normalized = np.clip(normalized, normalized.min(), 255)
-            #print("min = %s, max = %s" % (normalized.min(), normalized.max()))
-            return normalized
+    def special_median_filter(src, ksize):
+        # 畳み込み演算をしない領域の幅
+        d = int((ksize - 1) / 2)
+        h, w, c = src.shape[0], src.shape[1], src.shape[2]
 
-        def save_as_image(image, output_path):
-            image = normalize(image)
-            pil_img = Image.fromarray(numpy.uint8(image))
-            pil_img.save(output_path)
+        # 出力画像用の配列（要素は入力画像と同じ）
+        dst = src.copy()
+        result = src.copy()
 
-        def median_filter(image, ksize):
-            # 畳み込み演算をしない領域の幅
-            d = int((ksize - 1) / 2)
-            h, w = image.shape[0], image.shape[1]
-
-            # 出力画像用の配列（要素は入力画像と同じ）
-            dst = image.copy()
-
+        for i in range(c):
             for y in range(d, h - d):
                 for x in range(d, w - d):
                     # 近傍にある画素値の中央値を出力画像の画素値に設定
-                    dst[y][x] = np.median(image[y - d:y + d + 1, x - d:x + d + 1])
+                    dst[y][x][i] = np.median(src[y - d:y + d + 1, x - d:x + d + 1, i])
 
-            return dst
+        means = []
+        for i in range(c):
+            means.append(np.mean(src[:, :, i] - dst[:, :, i]))
 
-        def special_median_filter(src, ksize):
-            # 畳み込み演算をしない領域の幅
-            d = int((ksize - 1) / 2)
-            h, w, c = src.shape[0], src.shape[1], src.shape[2]
+        for i in range(c):
+            for y in range(d, h - d):
+                for x in range(d, w - d):
+                    # 近傍にある画素値の中央値を出力画像の画素値に設定
+                    pixel = src[y, x, i]
+                    # print(pixel - dst[y, x, i])
+                    if pixel == 0 or pixel == 255:
+                        result[y, x, i] = dst[y, x, i]
+                    elif pixel - dst[y, x, i] > means[i]:
+                        result[y, x, i] = dst[y, x, i]
+        return result
 
-            # 出力画像用の配列（要素は入力画像と同じ）
-            dst = src.copy()
-            result = src.copy()
 
-            for i in range(c):
-                for y in range(d, h - d):
-                    for x in range(d, w - d):
-                        # 近傍にある画素値の中央値を出力画像の画素値に設定
-                        dst[y][x][i] = np.median(src[y - d:y + d + 1, x - d:x + d + 1, i])
-
-            means = []
-            for i in range(c):
-                means.append(np.mean(src[:, :, i] - dst[:, :, i]))
-
-            for i in range(c):
-                for y in range(d, h - d):
-                    for x in range(d, w - d):
-                        # 近傍にある画素値の中央値を出力画像の画素値に設定
-                        pixel = src[y, x, i]
-                        # print(pixel - dst[y, x, i])
-                        if pixel == 0 or pixel == 255:
-                            result[y, x, i] = dst[y, x, i]
-                        elif pixel - dst[y, x, i] > means[i]:
-                            result[y, x, i] = dst[y, x, i]
-            return result
-
-        img_dataframe = pd.read_csv(input_file)
-        true_dataframe = img_dataframe[]
-
-        with open(input_file_path, 'r') as f:
-            reader = csv.reader(f)
-            header = next(reader)
-            #col_size = len(header)
-            col_size = 6
-            channel_num = 3
-            label_index = 6
-            #CSVからの読み込み
-            for i, row in enumerate(reader):
-                #ラベル抽出
-                label = int(row[label_index])
-                #正解データ数が5000を超えたら終了
-                if len(list(filter(lambda x:x[0]==1, dataset))) >= 5000 and label == 1:
-                    continue
-                print("No. %s started" % i)
-                #画像へのパス
-                image_paths = row[2:label_index]
-                #画像のカタログID
-                catalog_id = row[0]
-                if img_channels > 1:
-                    #各チャネルの画像をリサイズして合成(RGB形式にする)
-                    images = [load_and_resize(FILE_HOME + filepath) for filepath in image_paths]
-                    image = combine_images(images)
-                    #image = special_median_filter(image, 5)
-                else:
-                    image = load_and_resize(row[1])
-                #image = normalize(image)
-                #処理後の画像の保存
-                combined_filename = '{0}_{1}.png'.format(label, '_'.join(row[1].split('/')[-2:]).replace('/', '_'))
-                combined_img_path = FILE_HOME + '/combined_images/{0}'.format(combined_filename)
-                if save_mode:
-                    save_as_image(image, combined_img_path)
-
-                dataset.append( (label, image, image_paths, catalog_id, combined_img_path) )
-
-        print("DATASET SIZE = %s" % len(dataset))
-        print("TRUE SIZE = %s, FALSE SIZE = %s" % ( len(list(filter(lambda x:x[0]==1, dataset))), len(list(filter(lambda x:x[0]==0, dataset))) ))
-
-        train_image_set = []
-        train_label_set = []
-        train_image_paths_set = []
-        train_catalog_ids_set = []
-        train_combined_img_path_set = []
-        test_image_set = []
-        test_label_set = []
-        test_image_paths_set = []
-        test_catalog_ids_set = []
-        test_combined_img_path_set = []
-        datagen = ImageDataGenerator(
-            horizontal_flip=True,
-            vertical_flip=True)
-        #読み込んだデータを学習用，テスト用に分割する
-        for i in range(0, class_num):
-            images = list(map(lambda x: x[1], list(filter(lambda x: x[0] == i, dataset))))
-            image_paths = list(map(lambda x: x[2], list(filter(lambda x: x[0] == i, dataset))))
-            catalog_ids = list(map(lambda x: x[3], list(filter(lambda x: x[0] == i, dataset))))
-            combined_img_paths = list(map(lambda x: x[4], list(filter(lambda x: x[0] == i, dataset))))
-            image_path_zipped = list(zip(images, image_paths, catalog_ids, combined_img_paths))
-            labels = len(images)*[i]
-            train_X, test_X, train_Y, test_Y = train_test_split(image_path_zipped, labels, train_size=train_test_split_rate)
-            #誤判定画像を増やす
-            if i == 0:
-                train_X_tmp = train_X
-                train_X = []
-                train_Y = []
-                for x in train_X_tmp:
-                    image = np.expand_dims(x[0], axis=0)
-                    #generator = datagen.flow(image, batch_size=1, save_to_dir=SAVE_DIR, save_prefix='img', save_format='png')
-                    generator = datagen.flow(image, batch_size=1, save_prefix='img', save_format='png')
-                    for ite in range(19):
-                        batch = generator.next()
-                        train_X.append( (batch[0], x[1], x[2], x[3]) )
-                        train_Y.append(i)
-            train_images = list(map(lambda x: x[0], train_X))
-            train_image_paths = list(map(lambda x: x[1], train_X))
-            train_catalog_ids = list(map(lambda x: x[2], train_X))
-            train_combined_img_paths = list(map(lambda x: x[3], train_X))
-            test_images = list(map(lambda x: x[0], test_X))
-            test_image_paths = list(map(lambda x: x[1], test_X))
-            test_catalog_ids = list(map(lambda x: x[2], test_X))
-            test_combined_img_paths = list(map(lambda x: x[3], test_X))
-            train_image_set.extend(train_images)
-            train_label_set.extend(train_Y)
-            train_image_paths_set.extend(train_image_paths)
-            train_catalog_ids_set.extend(train_catalog_ids)
-            train_combined_img_path_set.extend(train_combined_img_paths)
-            test_image_set.extend(test_images)
-            test_label_set.extend(test_Y)
-            test_image_paths_set.extend(test_image_paths)
-            test_catalog_ids_set.extend(test_catalog_ids)
-            test_combined_img_path_set.extend(test_combined_img_paths)
-
-            print("Train size for class %s is %s" % (i, len(train_images)))
-            print("Test size for class %s is %s" % (i, len(test_images)))
-
-        return ( train_image_set, train_label_set, train_image_paths_set, train_catalog_ids_set, train_combined_img_path_set,
-             test_image_set, test_label_set, test_image_paths_set, test_catalog_ids_set, test_combined_img_path_set )
 
 class GalaxyClassifier:
     def __init__(self):
         self.model = Sequential()
         #self.build_model()
-
-    def build_model_lbg(self):
-        self.model.add(Conv2D(10, 3, 3, border_mode='same', input_shape=(input_shape[0], input_shape[1], input_shape[2])))
-        self.model.add(Activation('relu'))
-        self.model.add(MaxPooling2D(pool_size=(2, 2), dim_ordering="tf"))
-        self.model.add(Conv2D(64, 3, 3))
-        self.model.add(Activation('relu'))
-        self.model.add(MaxPooling2D(pool_size=(2, 2), dim_ordering="tf"))
-        #self.model.add(Dropout(0.25))
-
-        self.model.add(Flatten())
-        self.model.add(Dense(256))
-        self.model.add(Activation('relu'))
-        self.model.add(Dropout(0.5))
-        self.model.add(Dense(class_num))
-        self.model.add(Activation('softmax'))
 
     def build_model_lae(self):
         self.model.add(Conv2D(10, (3, 3), input_shape=(input_shape[0], input_shape[1], input_shape[2]), padding="same"))
@@ -304,43 +193,31 @@ class GalaxyClassifier:
         self.model.add(Dense(16))
         self.model.add(Activation('relu'))
         self.model.add(Dropout(0.5))
-        self.model.add(Dense(class_num))
+        self.model.add(Dense(CLASS_NUM))
         self.model.add(Activation('softmax'))
 
-    def build_model_dropout(self):
-        self.model.add(Conv2D(10, 3, 3, padding='same', input_shape=(input_shape[0], input_shape[1], input_shape[2])))
-        self.model.add(Activation('relu'))
-        self.model.add(MaxPooling2D(pool_size=(2, 2), dim_ordering="tf"))
-
-        self.model.add(Conv2D(64, 3, 3))
-        self.model.add(Activation('relu'))
-        self.model.add(MaxPooling2D(pool_size=(2, 2), dim_ordering="tf"))
-
-        self.model.add(Flatten())
-        self.model.add(Dense(16))
-        self.model.add(Activation('relu'))
-        self.model.add(Dropout(0.5))
-        self.model.add(Dense(class_num))
-        self.model.add(Activation('softmax'))
 
     def train(self, train_image_set, train_label_set):
         optimizer = Adam(lr=0.001)
         self.model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
         train_image_set = np.array(train_image_set)
         train_image_set = train_image_set.reshape(train_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
-        train_label_set = to_categorical(train_label_set)
+        train_label_set = np.array(train_label_set)
         #early_stopping = EarlyStopping(monitor='val_loss', patience=5)
         #self.model.fit(train_image_set, train_label_set, nb_epoch=20, batch_size=10, validation_split=0.1, callbacks=[early_stopping])
+        print(train_image_set.shape)
+        print(train_label_set.shape)
         return self.model.fit(train_image_set, train_label_set, epochs=nb_epoch, batch_size=batch_size, validation_split=validation_split)
+
 
     def evaluate(self, test_image_set, test_label_set):
         test_image_set = np.array(test_image_set)
         test_label_set = np.array(test_label_set)
         test_image_set = test_image_set.reshape(test_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
-        test_label_set = to_categorical(test_label_set)
         score = self.model.evaluate(test_image_set, test_label_set, verbose=0)
         return score
         plot_model(self.model, to_file='model.png')
+
 
     def predictAll(self, test_image_set, test_label_set, test_image_paths_set, test_catalog_ids_set, test_combined_img_path_set):
         test_image_set = np.array(test_image_set)
@@ -351,6 +228,7 @@ class GalaxyClassifier:
         self.__writeResultToCSV(zip(test_catalog_ids_set, test_image_paths_set, test_combined_img_path_set, test_label_set, predicted), './predict_result.csv')
         #for (correct_label, probabilities) in zip(test_label_set, predicted):
         #    print("correct label = %s, probabilities = [%s, %s]" % (correct_label, probabilities[0], probabilities[1]))
+
 
     def __writeResultToCSV(self, zipped_result, output_filepath):
         with open(output_filepath, 'w') as f:
@@ -386,35 +264,83 @@ if __name__ == "__main__":
         print('Usage: python %s input_file_path' %argv[0])
         quit()
 
-    trial_count = 1
-    accuracies = []
-    dataset = DatasetLoader(argv[1])
-    galaxyClassifier = GalaxyClassifier()
-    #galaxyClassifier.build_model_lbg()
-    galaxyClassifier.build_model_lae()
-    #galaxyClassifier.build_model_dropout()
-    hist = galaxyClassifier.train(dataset.train_image_set, dataset.train_label_set)
 
-    #galaxyClassifier.visualizeFeatureMaps(2)
+    #create dataset for cross validation
+    dataset = DatasetLoader(argv[1], DATA_ROOT_DIR)
+    true_dataset = dataset.get_dataset(1)
+    false_dataset = dataset.get_dataset(0)
 
-    acc = hist.history['acc']
-    val_acc = hist.history['val_acc']
+    kfold = KFold(n_splits=5)
 
-    epochs = len(acc)
-    #plt.plot(range(epochs), acc, marker='.', label='acc')
-    #plt.plot(range(epochs), val_acc, marker='.', label='val_acc')
-    #plt.legend(loc='best')
-    #plt.grid()
-    #plt.xlabel('epoch')
-    #plt.ylabel('acc')
-    #plt.show()
-    #plt.savefig("accuracy.png")
+    true_dataset_fold = kfold.split(true_dataset)
+    false_dataset_fold = kfold.split(false_dataset)
 
-    score = galaxyClassifier.evaluate(dataset.test_image_set, dataset.test_label_set)
-    print("%s: %.2f%%" % (galaxyClassifier.model.metrics_names[1], score[1] * 100))
+    for fold_idx, ( (true_train_idx, true_test_idx), (false_train_idx, false_test_idx) ) in\
+            enumerate( zip(true_dataset_fold, false_dataset_fold) ):
 
-    accuracies.append(float(score[1]))
+        true_train_data = [true_dataset[i] for i in true_train_idx]
+        true_test_data = [true_dataset[i] for i in true_test_idx]
+        false_train_data = [false_dataset[i] for i in false_train_idx]
+        false_test_data = [false_dataset[i] for i in false_test_idx]
 
-    print("average accuracy = %s" % (sum(accuracies)/len(accuracies)))
+        #data augumentation
+        datagen = ImageDataGenerator(
+            horizontal_flip=True,
+            vertical_flip=True)
 
-    galaxyClassifier.predictAll(dataset.test_image_set, dataset.test_label_set, dataset.test_image_paths_set, dataset.test_catalog_ids_set, dataset.test_combined_img_path_set)
+        tmp_false_train_data = false_train_data
+        false_train_data = []
+        for idx, data in enumerate( tmp_false_train_data ):
+            label = data[0]
+            img = data[1]
+            img_no = data[2]
+            img_name = data[3]
+            img_names = data[4]
+            expanded_image = np.expand_dims(img, axis=0)
+            generator = datagen.flow(expanded_image, batch_size=1, save_prefix='img', save_format='png')
+            for ite in range(19):
+                batch = generator.next()
+                false_train_data.append( (label, batch[0], img_no, img_name, img_names) )
+
+        true_train_img = list(map(lambda data: data[1], true_train_data))
+        true_train_label = list(map(lambda data: data[0], true_train_data))
+        true_test_img = list(map(lambda data: data[1], true_test_data))
+        true_test_label = list(map(lambda data: data[0], true_test_data))
+        false_train_img = list(map(lambda data: data[1], false_train_data))
+        false_train_label = list(map(lambda data: data[0], false_train_data))
+        false_test_img = list(map(lambda data: data[1], false_test_data))
+        false_test_label = list(map(lambda data: data[0], false_test_data))
+
+        train_img = true_train_img + false_train_img
+        train_label = true_train_label + false_train_label
+        test_img = true_test_img + false_test_img
+        test_label = true_test_label + false_test_label
+
+        accracies = []
+        galaxyClassifier = GalaxyClassifier()
+        galaxyClassifier.build_model_lae()
+        hist = galaxyClassifier.train(train_img, train_label)
+
+        #galaxyClassifier.visualizeFeatureMaps(2)
+
+        acc = hist.history['acc']
+        val_acc = hist.history['val_acc']
+
+        epochs = len(acc)
+        plt.plot(range(epochs), acc, marker='.', label='acc')
+        plt.plot(range(epochs), val_acc, marker='.', label='val_acc')
+        plt.legend(loc='best')
+        plt.grid()
+        plt.xlabel('epoch')
+        plt.ylabel('acc')
+        #plt.show()
+        plt.savefig("accuracy.png")
+
+        score = galaxyClassifier.evaluate(test_img, test_label)
+        print("%s: %.2f%%" % (galaxyClassifier.model.metrics_names[1], score[1] * 100))
+
+        accuracies.append(float(score[1]))
+
+        print("average accuracy = %s" % (sum(accuracies)/len(accuracies)))
+
+        #galaxyClassifier.predictAll(dataset.test_image_set, dataset.test_label_set, dataset.test_image_paths_set, dataset.test_catalog_ids_set, dataset.test_combined_img_path_set)
