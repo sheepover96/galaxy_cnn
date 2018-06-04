@@ -46,7 +46,7 @@ IMG_CHANNEL = 4
 IMG_SIZE = 50
 
 BATCH_SIZE = 10
-NEPOCH = 100
+NEPOCH = 10
 KFOLD = 5
 
 TEST_RATE = 0.2
@@ -375,7 +375,7 @@ if __name__ == '__main__':
             model = Net()
             if GPU:
                 model.cuda()
-            optimizer = optim.Adam(model.parameters(), lr=0.0001)
+            optimizer = optim.Adam(model.parameters(), lr=0.001)
 
             test_acc = []
             test_loss = []
