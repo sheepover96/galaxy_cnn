@@ -79,7 +79,7 @@ class DatasetLoader:
         for i in range(CLASS_NUM):
             if i == 1:
                 tmp_dataframe = data_frame[data_frame[LABEL_IDX]==i]
-                self.dataset_frame_list.append(tmp_dataframe[1:5000])
+                self.dataset_frame_list.append(tmp_dataframe.sample(n=5000))
             else:
                 self.dataset_frame_list.append(data_frame[data_frame[LABEL_IDX]==i])
             self.dataset.append( self.create_dataset(i) )
