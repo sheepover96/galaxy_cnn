@@ -8,14 +8,14 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 from torch.utils.data import ConcatDataset, DataLoader, sampler
 
-import pandas as pd
-from sklearn.model_selection import train_test_split, KFold
-from skimage import io, transform
-import numpy as np
-import matplotlib.pyplot as plt
-from statistics import mean
 from PIL import Image
+from skimage import io, transform
+from sklearn.model_selection import train_test_split, KFold
+from statistics import mean
 import csv
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 from astropy.io import fits
 
@@ -142,6 +142,8 @@ class PngImageDataset(Dataset):
 
         if self.transform:
             image = self.transform(image)
+
+        image /= 255
 
         return img_id, img_name, img_names, image, label
 
