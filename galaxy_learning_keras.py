@@ -275,6 +275,7 @@ if __name__ == "__main__":
     true_dataset_fold = kfold.split(true_dataset)
     false_dataset_fold = kfold.split(false_dataset)
 
+    accuracies = []
     for fold_idx, ( (true_train_idx, true_test_idx), (false_train_idx, false_test_idx) ) in\
             enumerate( zip(true_dataset_fold, false_dataset_fold) ):
 
