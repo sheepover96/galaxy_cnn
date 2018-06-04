@@ -59,12 +59,12 @@ IMG_IDX = 2
 LABEL_IDX = IMG_CHANNEL + IMG_IDX
 PNG_LABEL_IDX = 2 + IMG_CHANNEL
 
-FILE_HOME = "/Users/sheep/Documents/research/project/hsc"
+FILE_HOME = "/home/okura/research/project/hsc"
 
-DATA_ROOT_DIR = '/Users/sheep/Documents/research/project/hsc'
+DATA_ROOT_DIR = '/home/okura/research/project/hsc'
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-PNG_IMG_DIR = '/Users/sheep/Documents/research/project/hsc/png_images'
+PNG_IMG_DIR = '/home/okura/research/project/hsc/png_images'
 
 SAVE_DIR = '/Users/sheep/documents/research/project/hsc/saved_data'
 
