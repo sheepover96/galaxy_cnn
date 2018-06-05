@@ -24,7 +24,7 @@ import sys
 
 GPU = torch.cuda.is_available()
 
-TRUE_DATA_NUM = 12263
+TRUE_DATA_NUM = 10720
 
 if not GPU:
     DATA_ROOT_DIR = '/Users/sheep/Documents/research/project/hsc'
@@ -46,7 +46,7 @@ IMG_CHANNEL = 4
 IMG_SIZE = 50
 
 BATCH_SIZE = 10
-NEPOCH = 100
+NEPOCH = 600
 KFOLD = 5
 
 TEST_RATE = 0.2
@@ -310,111 +310,113 @@ if __name__ == '__main__':
         ImageDataset = FitsImageDataset
 
 
-    for split in range(5):
-        start = split * ( TRUE_DATA_NUM//5 )
-        end = (split + 1) * ( TRUE_DATA_NUM//5 )
-        print('start:', start)
-        print('end:', end)
-        true_img_dataset = ImageDataset(input_file_path, DATA_ROOT_DIR, 1, transform=transforms.Compose([
-            transforms.CenterCrop(IMG_SIZE),
-            transforms.ToTensor(),
-            #transforms.Normalize((10,), (50,))
-            ]), start=start, end=end)
+    start = 0
+    end = TRUE_DATA_NUM
+    print('start:', start)
+    print('end:', end)
+    true_img_dataset = ImageDataset(input_file_path, DATA_ROOT_DIR, 1, transform=transforms.Compose([
+        transforms.CenterCrop(IMG_SIZE),
+        transforms.ToTensor(),
+        #transforms.Normalize((10,), (50,))
+        ]), start=start, end=end)
 
 
-        false_img_dataset = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose([
-            transforms.CenterCrop(IMG_SIZE),
-            #transforms.RandomHorizontalFlip(),
-            #transforms.RandomVerticalFlip(),
-            #transforms.RandomRotation(300),
-            transforms.ToTensor(),
-            #transforms.RandomAffine(180, translate=(10, 10)),
-            #transforms.Normalize((0.1307,), (0.3081,))
-            ]))
+    false_img_dataset = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose([
+        transforms.CenterCrop(IMG_SIZE),
+        #transforms.RandomHorizontalFlip(),
+        #transforms.RandomVerticalFlip(),
+        #transforms.RandomRotation(300),
+        transforms.ToTensor(),
+        #transforms.RandomAffine(180, translate=(10, 10)),
+        #transforms.Normalize((0.1307,), (0.3081,))
+        ]))
+
+
+    kfold = KFold(n_splits=KFOLD)
+
+    true_dataset_fold = kfold.split(true_img_dataset)
+    false_dataset_fold = kfold.split(false_img_dataset)
+    accuracy = []
+
+    #model training and test prediction with k fold cross validation
+    for fold_idx, ( (true_train_idx, true_test_idx), (false_train_idx, false_test_idx) ) in\
+            enumerate( zip(true_dataset_fold, false_dataset_fold) ):
+
+        true_train_data = [true_img_dataset[i] for i in true_train_idx]
+        true_test_data = [true_img_dataset[i] for i in true_test_idx]
+        false_train_data = [false_img_dataset[i] for i in false_train_idx]
 
         #false data augumentation
         tf_combinations = get_transform_combination2()
-        for tf in tf_combinations:
-            tf1 = []
-            tf1.extend(tf)
-            tf1.append(transforms.CenterCrop(IMG_SIZE))
-            tf1.append(transforms.ToTensor())
-            false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
-                tf1
-            ))
-            false_img_dataset = ConcatDataset([false_img_dataset, false_aug])
+        for i in range(4):
+            for tf in tf_combinations:
+                tf1 = []
+                tf1.extend(tf)
+                tf1.append(transforms.CenterCrop(IMG_SIZE))
+                tf1.append(transforms.ToTensor())
+                false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
+                    tf1
+                ))
+                false_train_data = ConcatDataset([false_train_data, false_aug])
 
-        kfold = KFold(n_splits=KFOLD)
+        false_test_data = [false_img_dataset[i] for i in false_test_idx]
 
-        true_dataset_fold = kfold.split(true_img_dataset)
-        false_dataset_fold = kfold.split(false_img_dataset)
-        accuracy = []
+        #image data for prediction
+        pr_true_test_data = [true_img_dataset[i] for i in true_test_idx]
+        pr_false_test_data = [false_img_dataset[i] for i in false_test_idx]
 
-        #model training and test prediction with k fold cross validation
-        for fold_idx, ( (true_train_idx, true_test_idx), (false_train_idx, false_test_idx) ) in\
-                enumerate( zip(true_dataset_fold, false_dataset_fold) ):
+        train_data = ConcatDataset([true_train_data, false_train_data])
+        test_data = ConcatDataset([true_test_data, false_test_data])
+        pr_test_data = ConcatDataset([pr_true_test_data, pr_false_test_data])
 
-            true_train_data = [true_img_dataset[i] for i in true_train_idx]
-            true_test_data = [true_img_dataset[i] for i in true_test_idx]
-            false_train_data = [false_img_dataset[i] for i in false_train_idx]
-            false_test_data = [false_img_dataset[i] for i in false_test_idx]
+        train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
+        test_loader = DataLoader(test_data, batch_size=100, shuffle=True)
+        pr_test_loader = DataLoader(pr_test_data, batch_size=100, shuffle=False)
 
-            #image data for prediction
-            pr_true_test_data = [true_img_dataset[i] for i in true_test_idx]
-            pr_false_test_data = [false_img_dataset[i] for i in false_test_idx]
+        print('N TRUE TRAIN: {}\nN TRUE TEST: {}'.format(len(true_train_data), len(true_test_data)))
+        print('N FALSE TRAIN: {}\nN FALSE TEST: {}'.format(len(false_train_data), len(false_test_data)))
 
-            train_data = ConcatDataset([true_train_data, false_train_data])
-            test_data = ConcatDataset([true_test_data, false_test_data])
-            pr_test_data = ConcatDataset([pr_true_test_data, pr_false_test_data])
+        model = Net()
+        if GPU:
+            model.cuda()
+        optimizer = optim.Adam(model.parameters(), lr=0.00001)
 
-            train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
-            test_loader = DataLoader(test_data, batch_size=100, shuffle=True)
-            pr_test_loader = DataLoader(pr_test_data, batch_size=100, shuffle=False)
+        test_acc = []
+        test_loss = []
 
-            print('N TRUE TRAIN: {}\nN TRUE TEST: {}'.format(len(true_train_data), len(true_test_data)))
-            print('N FALSE TRAIN: {}\nN FALSE TEST: {}'.format(len(false_train_data), len(false_test_data)))
+        for epoch in range(1, NEPOCH + 1):
+            train(epoch, model, optimizer, train_loader)
+            tloss, acc = test(model, test_loader)
+            test_loss.append(tloss)
+            test_acc.append(acc)
 
-            model = Net()
-            if GPU:
-                model.cuda()
-            optimizer = optim.Adam(model.parameters(), lr=0.0001)
+        result_file = '{}_{}_{}'.format(split, fold_idx, RESULT_FILE)
+        result_file_path = os.path.join(RESULT_FILE_PATH, result_file)
+        acc, matrix = predict(model, pr_test_loader, result_file_path)
+        accuracy.append(acc.item())
+        for i in range(CLASS_NUM):
+            for j in range(CLASS_NUM):
+                print(matrix[i][j], end=', ')
+            print('\n')
+        fig, (figL, figR) = plt.subplots(ncols=2, figsize=(10,4))
+        figL.plot(range(1, 1+NEPOCH), np.array(test_loss), marker='o', linewidth=2)
+        figL.set_title('test loss')
+        figL.set_xlabel('epoch')
+        figL.set_ylabel('loss')
+        figL.set_xlim(0, NEPOCH)
+        figL.grid(True)
 
-            test_acc = []
-            test_loss = []
+        figR.plot(np.array(range(NEPOCH)), np.array(test_acc), marker='o', linewidth=2)
+        figR.set_title('test accuracy')
+        figR.set_xlabel('epoch')
+        figR.set_ylabel('accuracy')
+        figR.set_xlim(0, NEPOCH)
+        figR.grid(True)
 
-            for epoch in range(1, NEPOCH + 1):
-                train(epoch, model, optimizer, train_loader)
-                tloss, acc = test(model, test_loader)
-                test_loss.append(tloss)
-                test_acc.append(acc)
+        graph_name = '{}_{}_result.png'.format(split, fold_idx)
 
-            result_file = '{}_{}_{}'.format(split, fold_idx, RESULT_FILE)
-            result_file_path = os.path.join(RESULT_FILE_PATH, result_file)
-            acc, matrix = predict(model, pr_test_loader, result_file_path)
-            accuracy.append(acc.item())
-            for i in range(CLASS_NUM):
-                for j in range(CLASS_NUM):
-                    print(matrix[i][j], end=', ')
-                print('\n')
-            fig, (figL, figR) = plt.subplots(ncols=2, figsize=(10,4))
-            figL.plot(range(1, 1+NEPOCH), np.array(test_loss), marker='o', linewidth=2)
-            figL.set_title('test loss')
-            figL.set_xlabel('epoch')
-            figL.set_ylabel('loss')
-            figL.set_xlim(0, NEPOCH)
-            figL.grid(True)
+        print('save result image:', graph_name)
+        fig.savefig(os.path.join('result', 'graph', graph_name))
 
-            figR.plot(np.array(range(NEPOCH)), np.array(test_acc), marker='o', linewidth=2)
-            figR.set_title('test accuracy')
-            figR.set_xlabel('epoch')
-            figR.set_ylabel('accuracy')
-            figR.set_xlim(0, NEPOCH)
-            figR.grid(True)
-
-            graph_name = '{}_{}_result.png'.format(split, fold_idx)
-
-            print('save result image:', graph_name)
-            fig.savefig(os.path.join('result', 'graph', graph_name))
-
-        print('mean', accuracy)
-        #fig.show()
+    print('mean', accuracy)
+    #fig.show()

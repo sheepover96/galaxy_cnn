@@ -216,7 +216,6 @@ class GalaxyClassifier:
         test_image_set = test_image_set.reshape(test_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
         score = self.model.evaluate(test_image_set, test_label_set, verbose=0)
         return score
-        plot_model(self.model, to_file='model.png')
 
 
     def predictAll(self, test_image_set, test_label_set, test_image_paths_set, test_catalog_ids_set, test_combined_img_path_set):
