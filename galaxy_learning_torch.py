@@ -24,7 +24,7 @@ import sys
 
 GPU = torch.cuda.is_available()
 
-TRUE_DATA_NUM = 12263
+TRUE_DATA_NUM = 10720
 
 if not GPU:
     DATA_ROOT_DIR = '/Users/sheep/Documents/research/project/hsc'
@@ -46,7 +46,7 @@ IMG_CHANNEL = 4
 IMG_SIZE = 50
 
 BATCH_SIZE = 10
-NEPOCH = 20
+NEPOCH = 600
 KFOLD = 5
 
 TEST_RATE = 0.2
@@ -310,9 +310,8 @@ if __name__ == '__main__':
         ImageDataset = FitsImageDataset
 
 
-    split = 1
-    start = 1
-    end = 5000
+    start = 0
+    end = TRUE_DATA_NUM
     print('start:', start)
     print('end:', end)
     true_img_dataset = ImageDataset(input_file_path, DATA_ROOT_DIR, 1, transform=transforms.Compose([
@@ -332,18 +331,6 @@ if __name__ == '__main__':
         #transforms.Normalize((0.1307,), (0.3081,))
         ]))
 
-    #false data augumentation
-    tf_combinations = get_transform_combination2()
-    for i in range(18):
-        for tf in tf_combinations:
-            tf1 = []
-            tf1.extend(tf)
-            tf1.append(transforms.CenterCrop(IMG_SIZE))
-            tf1.append(transforms.ToTensor())
-            false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
-                tf1
-            ))
-            false_img_dataset = ConcatDataset([false_img_dataset, false_aug])
 
     kfold = KFold(n_splits=KFOLD)
 
@@ -358,22 +345,21 @@ if __name__ == '__main__':
         true_train_data = [true_img_dataset[i] for i in true_train_idx]
         true_test_data = [true_img_dataset[i] for i in true_test_idx]
         false_train_data = [false_img_dataset[i] for i in false_train_idx]
-        false_test_data = [false_img_dataset[i] for i in false_test_idx]
 
         #false data augumentation
         tf_combinations = get_transform_combination2()
-        for i in range(18):
+        for i in range(4):
             for tf in tf_combinations:
                 tf1 = []
-                tf1.append(transforms.CenterCrop(IMG_SIZE))
                 tf1.extend(tf)
+                tf1.append(transforms.CenterCrop(IMG_SIZE))
                 tf1.append(transforms.ToTensor())
                 false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
                     tf1
                 ))
-                false_aug = [false_aug[i] for i in false_train_idx]
                 false_train_data = ConcatDataset([false_train_data, false_aug])
 
+        false_test_data = [false_img_dataset[i] for i in false_test_idx]
 
         #image data for prediction
         pr_true_test_data = [true_img_dataset[i] for i in true_test_idx]
@@ -393,7 +379,7 @@ if __name__ == '__main__':
         model = Net()
         if GPU:
             model.cuda()
-        optimizer = optim.Adam(model.parameters(), lr=0.001)
+        optimizer = optim.Adam(model.parameters(), lr=0.00001)
 
         test_acc = []
         test_loss = []
