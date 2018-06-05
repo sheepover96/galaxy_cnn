@@ -46,7 +46,7 @@ IMG_CHANNEL = 4
 IMG_SIZE = 50
 
 BATCH_SIZE = 10
-NEPOCH = 20
+NEPOCH = 600
 KFOLD = 5
 
 TEST_RATE = 0.2
@@ -332,6 +332,7 @@ if __name__ == '__main__':
         ]))
 
     #false data augumentation
+    #tf_combinations = get_transform_combination2()
     #for tf in tf_combinations:
     #    tf1 = []
     #    tf1.extend(tf)
