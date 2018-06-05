@@ -219,7 +219,7 @@ def train(epoch, model, optimizer, train_loader):
     for batch_idx, (img_id, img_name, img_names, image, label) in enumerate(train_loader):
         if GPU:
             image, label = image.cuda(), label.cuda()
-            
+
         image, label = Variable(image), Variable(label)
         optimizer.zero_grad()
         output = model(image)
