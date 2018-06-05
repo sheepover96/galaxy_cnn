@@ -69,7 +69,7 @@ class FitsImageDataset(Dataset):
         tmp_dataframe = pd.read_csv(csv_file_path, header=None)
         self.image_dataframe = tmp_dataframe[tmp_dataframe[LABEL_IDX] == label]
         if label == 1:
-            self.image_dataframe = self.image_dataframe#.sample(n=200)
+            self.image_dataframe = self.image_dataframe
         self.root_dir = root_dir
         self.transform = transform
 
@@ -116,7 +116,7 @@ class PngImageDataset(Dataset):
         tmp_dataframe = pd.read_csv(csv_file_path, header=None)
         self.image_dataframe = tmp_dataframe[tmp_dataframe[LABEL_IDX] == label]
         if label == 1:
-            self.image_dataframe = self.image_dataframe[start:end]#.sample(n=100)
+            self.image_dataframe = self.image_dataframe[start:end].sample(n=263)
         self.root_dir = root_dir
         self.transform = transform
 
@@ -310,9 +310,8 @@ if __name__ == '__main__':
         ImageDataset = FitsImageDataset
 
 
-    split = 1
-    start = 1
-    end = 5000
+    start = 0
+    end =  TRUE_DATA_NUM
     print('start:', start)
     print('end:', end)
     true_img_dataset = ImageDataset(input_file_path, DATA_ROOT_DIR, 1, transform=transforms.Compose([
@@ -333,17 +332,15 @@ if __name__ == '__main__':
         ]))
 
     #false data augumentation
-    tf_combinations = get_transform_combination2()
-    for i in range(18):
-        for tf in tf_combinations:
-            tf1 = []
-            tf1.extend(tf)
-            tf1.append(transforms.CenterCrop(IMG_SIZE))
-            tf1.append(transforms.ToTensor())
-            false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
-                tf1
-            ))
-            false_img_dataset = ConcatDataset([false_img_dataset, false_aug])
+    #for tf in tf_combinations:
+    #    tf1 = []
+    #    tf1.extend(tf)
+    #    tf1.append(transforms.CenterCrop(IMG_SIZE))
+    #    tf1.append(transforms.ToTensor())
+    #    false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
+    #        tf1
+    #    ))
+    #    false_img_dataset = ConcatDataset([false_img_dataset, false_aug])
 
     kfold = KFold(n_splits=KFOLD)
 
@@ -360,21 +357,6 @@ if __name__ == '__main__':
         false_train_data = [false_img_dataset[i] for i in false_train_idx]
         false_test_data = [false_img_dataset[i] for i in false_test_idx]
 
-        #false data augumentation
-        tf_combinations = get_transform_combination2()
-        for i in range(18):
-            for tf in tf_combinations:
-                tf1 = []
-                tf1.append(transforms.CenterCrop(IMG_SIZE))
-                tf1.extend(tf)
-                tf1.append(transforms.ToTensor())
-                false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
-                    tf1
-                ))
-                false_aug = [false_aug[i] for i in false_train_idx]
-                false_train_data = ConcatDataset([false_train_data, false_aug])
-
-
         #image data for prediction
         pr_true_test_data = [true_img_dataset[i] for i in true_test_idx]
         pr_false_test_data = [false_img_dataset[i] for i in false_test_idx]
@@ -384,8 +366,8 @@ if __name__ == '__main__':
         pr_test_data = ConcatDataset([pr_true_test_data, pr_false_test_data])
 
         train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
-        test_loader = DataLoader(test_data, batch_size=1, shuffle=False)
-        pr_test_loader = DataLoader(pr_test_data, batch_size=1, shuffle=False)
+        test_loader = DataLoader(test_data, batch_size=100, shuffle=True)
+        pr_test_loader = DataLoader(pr_test_data, batch_size=100, shuffle=False)
 
         print('N TRUE TRAIN: {}\nN TRUE TEST: {}'.format(len(true_train_data), len(true_test_data)))
         print('N FALSE TRAIN: {}\nN FALSE TEST: {}'.format(len(false_train_data), len(false_test_data)))
@@ -393,7 +375,7 @@ if __name__ == '__main__':
         model = Net()
         if GPU:
             model.cuda()
-        optimizer = optim.Adam(model.parameters(), lr=0.001)
+        optimizer = optim.Adam(model.parameters(), lr=0.00001)
 
         test_acc = []
         test_loss = []
