@@ -332,6 +332,19 @@ if __name__ == '__main__':
         #transforms.Normalize((0.1307,), (0.3081,))
         ]))
 
+    #false data augumentation
+    tf_combinations = get_transform_combination2()
+    for i in range(18):
+        for tf in tf_combinations:
+            tf1 = []
+            tf1.extend(tf)
+            tf1.append(transforms.CenterCrop(IMG_SIZE))
+            tf1.append(transforms.ToTensor())
+            false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
+                tf1
+            ))
+            false_img_dataset = ConcatDataset([false_img_dataset, false_aug])
+
     kfold = KFold(n_splits=KFOLD)
 
     true_dataset_fold = kfold.split(true_img_dataset)
