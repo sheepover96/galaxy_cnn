@@ -99,7 +99,7 @@ class DatasetLoader:
             img_names = [ path for path in img_names ]
 
             label = row_data[PNG_LABEL_IDX]
-            label = np_utils.to_categorical(label, num_classes=CLASS_NUM)
+            #label = np_utils.to_categorical(label, num_classes=CLASS_NUM)
 
             image = Image.open(os.path.join(PNG_IMG_DIR, png_img_name))
             image = imgCrop(image)
@@ -204,6 +204,7 @@ class GalaxyClassifier:
         train_image_set = np.array(train_image_set)
         train_image_set = train_image_set.reshape(train_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
         train_label_set = np.array(train_label_set)
+        train_label_set = to_categorical(train_label_set)
         #early_stopping = EarlyStopping(monitor='val_loss', patience=5)
         #self.model.fit(train_image_set, train_label_set, nb_epoch=20, batch_size=10, validation_split=0.1, callbacks=[early_stopping])
         print(train_image_set.shape)
@@ -214,6 +215,7 @@ class GalaxyClassifier:
     def evaluate(self, test_image_set, test_label_set):
         test_image_set = np.array(test_image_set)
         test_label_set = np.array(test_label_set)
+        test_label_set = to_categorical(test_label_set)
         test_image_set = test_image_set.reshape(test_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
         score = self.model.evaluate(test_image_set, test_label_set, verbose=0)
         pred = self.model.predict_classes(test_image_set)
