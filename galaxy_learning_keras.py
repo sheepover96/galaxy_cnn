@@ -216,7 +216,7 @@ class GalaxyClassifier:
         test_label_set = np.array(test_label_set)
         test_image_set = test_image_set.reshape(test_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
         score = self.model.evaluate(test_image_set, test_label_set, verbose=0)
-        pred = self.model.predict(test_image_set)
+        pred = self.model.predict_classes(test_image_set)
         return score, pred
         plot_model(self.model, to_file='model.png')
 
