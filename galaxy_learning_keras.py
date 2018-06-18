@@ -24,6 +24,7 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from sklearn import metrics
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.preprocessing import MinMaxScaler
 
@@ -215,7 +216,8 @@ class GalaxyClassifier:
         test_label_set = np.array(test_label_set)
         test_image_set = test_image_set.reshape(test_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
         score = self.model.evaluate(test_image_set, test_label_set, verbose=0)
-        return score
+        pred = self.model.predict(test_label)
+        return score, pred
         plot_model(self.model, to_file='model.png')
 
 
@@ -337,8 +339,10 @@ if __name__ == "__main__":
         #plt.show()
         plt.savefig("accuracy.png")
 
-        score = galaxyClassifier.evaluate(test_img, test_label)
+        score, pred = galaxyClassifier.evaluate(test_img, test_label)
         print("%s: %.2f%%" % (galaxyClassifier.model.metrics_names[1], score[1] * 100))
+        print('confusion matrix')
+        print(metrics.confusion_matrix(test_label, pred))
 
         accuracies.append(float(score[1]))
 
