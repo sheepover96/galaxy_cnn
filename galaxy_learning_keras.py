@@ -281,7 +281,9 @@ if __name__ == "__main__":
     kfold = KFold(n_splits=5)
 
     true_dataset_fold = kfold.split(true_dataset)
+    print(true_dataset_fold)
     false_dataset_fold = kfold.split(false_dataset)
+    print(false_dataset_fold)
 
     accuracies = []
     for fold_idx, ( (true_train_idx, true_test_idx), (false_train_idx, false_test_idx) ) in\
