@@ -261,7 +261,6 @@ def test(model, test_loader):
 
 
 def write_result(img_ids, img_name, img_names, labels, probs, result_file):
-    print('writing result...')
     #print(img_ids, img_name, img_names, labels, probs)
     with open(os.path.join(DATA_ROOT_DIR, result_file), 'a') as f:
         writer = csv.writer(f, lineterminator='\n')
@@ -369,8 +368,8 @@ if __name__ == '__main__':
         test_data = ConcatDataset([true_test_data, false_test_data])
         pr_test_data = ConcatDataset([pr_true_test_data, pr_false_test_data])
 
-        train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
-        test_loader = DataLoader(test_data, batch_size=1, shuffle=True)
+        train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=False)
+        test_loader = DataLoader(test_data, batch_size=1, shuffle=False)
         pr_test_loader = DataLoader(pr_test_data, batch_size=1, shuffle=False)
 
         print('N TRUE TRAIN: {}\nN TRUE TEST: {}'.format(len(true_train_data), len(true_test_data)))
