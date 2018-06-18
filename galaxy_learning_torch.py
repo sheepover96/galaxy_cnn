@@ -332,19 +332,6 @@ if __name__ == '__main__':
         #transforms.Normalize((0.1307,), (0.3081,))
         ]))
 
-    #false data augumentation
-    tf_combinations = get_transform_combination2()
-    for i in range(19):
-        for tf in tf_combinations:
-            tf1 = []
-            tf1.extend(tf)
-            tf1.append(transforms.CenterCrop(IMG_SIZE))
-            tf1.append(transforms.ToTensor())
-            false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
-                tf1
-            ))
-            false_img_dataset = ConcatDataset([false_img_dataset, false_aug])
-
     kfold = KFold(n_splits=KFOLD)
 
     true_dataset_fold = kfold.split(true_img_dataset)
@@ -359,6 +346,21 @@ if __name__ == '__main__':
         true_test_data = [true_img_dataset[i] for i in true_test_idx]
         false_train_data = [false_img_dataset[i] for i in false_train_idx]
         false_test_data = [false_img_dataset[i] for i in false_test_idx]
+
+        #false data augumentation
+        tf_combinations = get_transform_combination2()
+        for i in range(18):
+            for tf in tf_combinations:
+                tf1 = []
+                tf1.append(transforms.CenterCrop(IMG_SIZE))
+                tf1.extend(tf)
+                tf1.append(transforms.ToTensor())
+                false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
+                    tf1
+                ))
+                false_aug = [false_aug[i] for i in false_train_idx]
+                false_train_data = ConcatDataset([false_train_data, false_aug])
+
 
         #image data for prediction
         pr_true_test_data = [true_img_dataset[i] for i in true_test_idx]
