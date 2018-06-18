@@ -384,8 +384,8 @@ if __name__ == '__main__':
         pr_test_data = ConcatDataset([pr_true_test_data, pr_false_test_data])
 
         train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
-        test_loader = DataLoader(test_data, batch_size=100, shuffle=True)
-        pr_test_loader = DataLoader(pr_test_data, batch_size=100, shuffle=False)
+        test_loader = DataLoader(test_data, batch_size=1, shuffle=True)
+        pr_test_loader = DataLoader(pr_test_data, batch_size=1, shuffle=False)
 
         print('N TRUE TRAIN: {}\nN TRUE TEST: {}'.format(len(true_train_data), len(true_test_data)))
         print('N FALSE TRAIN: {}\nN FALSE TEST: {}'.format(len(false_train_data), len(false_test_data)))
@@ -393,7 +393,7 @@ if __name__ == '__main__':
         model = Net()
         if GPU:
             model.cuda()
-        optimizer = optim.Adam(model.parameters(), lr=0.01)
+        optimizer = optim.Adam(model.parameters(), lr=0.001)
 
         test_acc = []
         test_loss = []
