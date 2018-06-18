@@ -362,7 +362,7 @@ if __name__ == "__main__":
         plt.xlabel('epoch')
         plt.ylabel('acc')
         #plt.show()
-        plt.savefig("{}_kaccuracy.png".format(fold_idx))
+        plt.savefig("kaccuracy.png")
 
         plt.plot(range(epochs), acc, marker='.', label='loss')
         plt.plot(range(epochs), val_acc, marker='.', label='val_loss')
@@ -371,7 +371,7 @@ if __name__ == "__main__":
         plt.xlabel('epoch')
         plt.ylabel('loss')
         #plt.show()
-        plt.savefig("{}_kloss.png".format(fold_idx))
+        plt.savefig("kloss.png")
 
         score, pred = galaxyClassifier.evaluate(test_img, test_label)
         print("%s: %.2f%%" % (galaxyClassifier.model.metrics_names[1], score[1] * 100))
