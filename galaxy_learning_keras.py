@@ -320,6 +320,11 @@ if __name__ == "__main__":
         false_test_img = list(map(lambda data: data[1], false_test_data))
         false_test_label = list(map(lambda data: data[0], false_test_data))
 
+        print('TRUE TRAIN', len(true_train_img))
+        print('TRUE TEST', len(true_test_img))
+        print('FALSE TRAIN', len(false_train_img))
+        print('FALSE TRAIN', len(false_test_img))
+
         train_img = true_train_img + false_train_img
         train_label = true_train_label + false_train_label
         test_img = true_test_img + false_test_img
