@@ -78,7 +78,7 @@ class DatasetLoader:
         for i in range(CLASS_NUM):
             if i == 1:
                 tmp_dataframe = data_frame[data_frame[LABEL_IDX]==i]
-                self.dataset_frame_list.append(tmp_dataframe.sample(n=5000))
+                self.dataset_frame_list.append(tmp_dataframe[1:5000])
             else:
                 self.dataset_frame_list.append(data_frame[data_frame[LABEL_IDX]==i])
             self.dataset.append( self.create_dataset(i) )
@@ -334,6 +334,8 @@ if __name__ == "__main__":
 
         acc = hist.history['acc']
         val_acc = hist.history['val_acc']
+        loss = hist.history['loss']
+        val_loss = hist.history['val_loss']
 
         epochs = len(acc)
         plt.plot(range(epochs), acc, marker='.', label='acc')
@@ -343,7 +345,16 @@ if __name__ == "__main__":
         plt.xlabel('epoch')
         plt.ylabel('acc')
         #plt.show()
-        plt.savefig("accuracy.png")
+        plt.savefig("kaccuracy.png")
+
+        plt.plot(range(epochs), acc, marker='.', label='loss')
+        plt.plot(range(epochs), val_acc, marker='.', label='val_loss')
+        plt.legend(loc='best')
+        plt.grid()
+        plt.xlabel('epoch')
+        plt.ylabel('loss')
+        #plt.show()
+        plt.savefig("kloss.png")
 
         score, pred = galaxyClassifier.evaluate(test_img, test_label)
         print("%s: %.2f%%" % (galaxyClassifier.model.metrics_names[1], score[1] * 100))

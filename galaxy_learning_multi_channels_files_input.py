@@ -29,6 +29,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pandas import DataFrame
 from sklearn.model_selection import train_test_split
+from sklearn import metrics
 from sklearn.preprocessing import MinMaxScaler
 from torchvision import transforms
 
@@ -336,7 +337,8 @@ class GalaxyClassifier:
         test_image_set = test_image_set.reshape(test_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
         test_label_set = to_categorical(test_label_set)
         score = self.model.evaluate(test_image_set, test_label_set, verbose=0)
-        return score
+        pred = self.model.predict_classes(test_image_set)
+        return score, pred
         plot_model(self.model, to_file='model.png')
 
     def predictAll(self, test_image_set, test_label_set, test_image_paths_set, test_catalog_ids_set, test_combined_img_path_set):
@@ -417,8 +419,10 @@ if __name__ == "__main__":
         #plt.show()
         #plt.savefig("accuracy.png")
 
-        score = galaxyClassifier.evaluate(dataset.test_image_set, dataset.test_label_set)
+        score, pred = galaxyClassifier.evaluate(dataset.test_image_set, dataset.test_label_set)
         print("%s: %.2f%%" % (galaxyClassifier.model.metrics_names[1], score[1] * 100))
+        print('confusion matrix')
+        print(metrics.confusion_matrix(dataset.test_label_set, pred))
 
         accuracies.append(float(score[1]))
 

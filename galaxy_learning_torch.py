@@ -171,14 +171,14 @@ def get_transform_combination():
 
 def get_transform_combination2():
     tr = []
-    tr.append([transforms.RandomRotation((44, 45))])
-    tr.append([transforms.RandomRotation((89, 90))])
-    tr.append([transforms.RandomRotation((134, 135))])
-    tr.append([transforms.RandomRotation((179, 180))])
-    tr.append([transforms.RandomRotation((224, 225))])
-    tr.append([transforms.RandomRotation((269, 270))])
-    tr.append([transforms.RandomRotation((314, 315))])
-    tr.append([transforms.RandomHorizontalFlip(1)])
+    #tr.append([transforms.RandomRotation((44, 45))])
+    #tr.append([transforms.RandomRotation((89, 90))])
+    #tr.append([transforms.RandomRotation((134, 135))])
+    #tr.append([transforms.RandomRotation((179, 180))])
+    #tr.append([transforms.RandomRotation((224, 225))])
+    #tr.append([transforms.RandomRotation((269, 270))])
+    #tr.append([transforms.RandomRotation((314, 315))])
+    tr.append([transforms.RandomHorizontalFlip(0.5), transforms.RandomVerticalFlip(0.5)])
     #tr.append([transforms.RandomRotation((44, 45)), transforms.RandomHorizontalFlip(1)])
     #tr.append([transforms.RandomRotation((89, 90)), transforms.RandomHorizontalFlip(1)])
     #tr.append([transforms.RandomRotation((134, 135)), transforms.RandomHorizontalFlip(1)])
@@ -334,15 +334,16 @@ if __name__ == '__main__':
 
         #false data augumentation
         tf_combinations = get_transform_combination2()
-        for tf in tf_combinations:
-            tf1 = []
-            tf1.extend(tf)
-            tf1.append(transforms.CenterCrop(IMG_SIZE))
-            tf1.append(transforms.ToTensor())
-            false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
-                tf1
-            ))
-            false_img_dataset = ConcatDataset([false_img_dataset, false_aug])
+        for i in range(19):
+            for tf in tf_combinations:
+                tf1 = []
+                tf1.extend(tf)
+                tf1.append(transforms.CenterCrop(IMG_SIZE))
+                tf1.append(transforms.ToTensor())
+                false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
+                    tf1
+                ))
+                false_img_dataset = ConcatDataset([false_img_dataset, false_aug])
 
         kfold = KFold(n_splits=KFOLD)
 
