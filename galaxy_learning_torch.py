@@ -226,7 +226,7 @@ def train(epoch, model, optimizer, train_loader):
         loss.backward()
         optimizer.step()
 
-        if batch_idx % BATCH_SIZE == BATCH_SIZE - 1:
+        if batch_idx % 10*BATCH_SIZE == 10*BATCH_SIZE - 1:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(image), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.data.item()))
@@ -285,7 +285,6 @@ def predict(model, test_loader, result_file):
                 image, label = image.cuda(), label.cuda()
             image, label = Variable(image.float()), Variable(label)
             output = model(image)
-            print(output.data[0], 'a')
             pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
             flatten_label = label.data.view_as(pred)
             correct += pred.eq(flatten_label).long().cpu().sum()
