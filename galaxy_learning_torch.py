@@ -353,6 +353,7 @@ if __name__ == '__main__':
             for tf in tf_combinations:
                 tf1 = []
                 tf1.append(transforms.CenterCrop(IMG_SIZE))
+                tf1.append(transforms.Normalize(64, 16))
                 tf1.extend(tf)
                 tf1.append(transforms.ToTensor())
                 false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
