@@ -370,7 +370,7 @@ if __name__ == '__main__':
         test_data = ConcatDataset([true_test_data, false_test_data])
         pr_test_data = ConcatDataset([pr_true_test_data, pr_false_test_data])
 
-        train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
+        train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=False)
         test_loader = DataLoader(test_data, batch_size=1, shuffle=False)
         pr_test_loader = DataLoader(pr_test_data, batch_size=1, shuffle=False)
 
