@@ -380,7 +380,7 @@ if __name__ == '__main__':
         model = Net()
         if GPU:
             model.cuda()
-        optimizer = optim.Adam(model.parameters(), lr=0.0001)
+        optimizer = optim.Adam(model.parameters(), lr=0.01)
 
         test_acc = []
         test_loss = []
