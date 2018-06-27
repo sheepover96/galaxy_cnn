@@ -10,8 +10,6 @@ from keras.utils import np_utils
 from keras.utils import plot_model
 from keras.utils.np_utils import to_categorical
 
-from torchvision import transforms
-
 from astropy.io import fits
 
 from PIL import Image
