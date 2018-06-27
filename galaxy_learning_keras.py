@@ -86,7 +86,6 @@ class DatasetLoader:
             self.dataset.append( self.create_dataset(i) )
 
     def create_dataset(self, label):
-        imgCrop = transforms.CenterCrop(IMG_SIZE)
         data_frame = self.get_dataframe(label)
         data_list = []
 
@@ -102,12 +101,18 @@ class DatasetLoader:
             #label = np_utils.to_categorical(label, num_classes=CLASS_NUM)
 
             image = Image.open(os.path.join(PNG_IMG_DIR, png_img_name))
-            image = imgCrop(image)
             image = np.array(image)
+            image = self.crop_center(image, IMG_SIZE, IMG_SIZE)
 
             data_list.append( (label, image, img_no, png_img_name, img_names) )
 
         return data_list
+
+    def crop_center(img,cropx,cropy):
+        y,x = img.shape
+        startx = x//2-(cropx//2)
+        starty = y//2-(cropy//2)
+        return img[starty:starty+cropy,startx:startx+cropx]
 
     def get_dataframe(self, label):
         return self.dataset_frame_list[label]

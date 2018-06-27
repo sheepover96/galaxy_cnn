@@ -20,7 +20,6 @@ import pydot
 import graphviz
 
 import os
-import numpy
 import sys
 import csv
 import random
