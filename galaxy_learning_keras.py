@@ -331,7 +331,8 @@ if __name__ == "__main__":
 
         accracies = []
         galaxyClassifier = GalaxyClassifier()
-        galaxyClassifier.build_model_lae()
+        galaxyClassifier.resnet()
+        #galaxyClassifier.build_model_lae()
         hist = galaxyClassifier.train(train_img, train_label)
 
         #galaxyClassifier.visualizeFeatureMaps(2)
