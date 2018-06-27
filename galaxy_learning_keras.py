@@ -10,8 +10,6 @@ from keras.utils import np_utils
 from keras.utils import plot_model
 from keras.utils.np_utils import to_categorical
 
-from torchvision import transforms
-
 from astropy.io import fits
 
 from PIL import Image
@@ -24,6 +22,7 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from sklearn import metrics
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.preprocessing import MinMaxScaler
 
@@ -85,7 +84,6 @@ class DatasetLoader:
             self.dataset.append( self.create_dataset(i) )
 
     def create_dataset(self, label):
-        imgCrop = transforms.CenterCrop(IMG_SIZE)
         data_frame = self.get_dataframe(label)
         data_list = []
 
@@ -98,15 +96,22 @@ class DatasetLoader:
             img_names = [ path for path in img_names ]
 
             label = row_data[PNG_LABEL_IDX]
-            label = np_utils.to_categorical(label, num_classes=CLASS_NUM)
+            #label = np_utils.to_categorical(label, num_classes=CLASS_NUM)
 
             image = Image.open(os.path.join(PNG_IMG_DIR, png_img_name))
-            image = imgCrop(image)
             image = np.array(image)
+            image = self.crop_center(image, IMG_SIZE, IMG_SIZE)
 
             data_list.append( (label, image, img_no, png_img_name, img_names) )
 
         return data_list
+
+    def crop_center(self, img,cropx,cropy):
+        y,x,z = img.shape
+        startx = x//2-(cropx//2)
+        starty = y//2-(cropy//2)
+        return img[starty:starty+cropy,startx:startx+cropx,:]
+
 
     def get_dataframe(self, label):
         return self.dataset_frame_list[label]
@@ -203,6 +208,7 @@ class GalaxyClassifier:
         train_image_set = np.array(train_image_set)
         train_image_set = train_image_set.reshape(train_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
         train_label_set = np.array(train_label_set)
+        train_label_set = to_categorical(train_label_set)
         #early_stopping = EarlyStopping(monitor='val_loss', patience=5)
         #self.model.fit(train_image_set, train_label_set, nb_epoch=20, batch_size=10, validation_split=0.1, callbacks=[early_stopping])
         print(train_image_set.shape)
@@ -213,9 +219,11 @@ class GalaxyClassifier:
     def evaluate(self, test_image_set, test_label_set):
         test_image_set = np.array(test_image_set)
         test_label_set = np.array(test_label_set)
+        test_label_set = to_categorical(test_label_set)
         test_image_set = test_image_set.reshape(test_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
         score = self.model.evaluate(test_image_set, test_label_set, verbose=0)
-        return score
+        pred = self.model.predict_classes(test_image_set)
+        return score, pred
         plot_model(self.model, to_file='model.png')
 
 
@@ -337,8 +345,10 @@ if __name__ == "__main__":
         #plt.show()
         plt.savefig("accuracy.png")
 
-        score = galaxyClassifier.evaluate(test_img, test_label)
+        score, pred = galaxyClassifier.evaluate(test_img, test_label)
         print("%s: %.2f%%" % (galaxyClassifier.model.metrics_names[1], score[1] * 100))
+        print('confusion matrix')
+        print(metrics.confusion_matrix(test_label, pred))
 
         accuracies.append(float(score[1]))
 
