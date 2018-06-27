@@ -9,6 +9,7 @@ from keras.preprocessing.image import array_to_img, img_to_array, list_pictures,
 from keras.utils import np_utils
 from keras.utils import plot_model
 from keras.utils.np_utils import to_categorical
+from keras.applications.resnet50 import ResNet50
 
 from astropy.io import fits
 
@@ -200,6 +201,9 @@ class GalaxyClassifier:
         self.model.add(Dropout(0.5))
         self.model.add(Dense(CLASS_NUM))
         self.model.add(Activation('softmax'))
+
+    def resnet(self):
+        self.model = ResNet50(weights='imagenet', include_top=False)
 
 
     def train(self, train_image_set, train_label_set):
