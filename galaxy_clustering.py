@@ -111,10 +111,9 @@ if __name__ == '__main__':
         transforms.CenterCrop(IMG_SIZE)
         ]))
 
-    print(len(true_img_dataset))
 
     true_imgs = []
-    for (img_id, img_name, img_names, image, label) in true_img_dataset:
+    for (img_id, img_name, img_names, image, label) in false_img_dataset:
         true_imgs.append(image)
 
     true_imgs_np = np.array(true_imgs)
@@ -125,9 +124,6 @@ if __name__ == '__main__':
     true_imgs_std = sc.fit_transform(true_imgs_flat.transpose())
     cov_mat = np.cov(true_imgs_std)
     eigen_vals, eigen_vecs = np.linalg.eig(cov_mat)
-
-    for i in range(50):
-        print(eigen_vals[i])
 
     eigen_pairs = [(np.abs(eigen_vals[i]), eigen_vecs[i]) for i in range(len(eigen_vals))]
     eigen_pairs.sort(key=lambda k: k[0], reverse=True)
@@ -140,11 +136,11 @@ if __name__ == '__main__':
 
     labels = result.labels_
 
-    for ( (img_id, img_name, img_names, image, label), cls ) in zip(true_img_dataset, labels):
-        os.makedirs(os.path.join(DATA_ROOT_DIR, 'clustering', '1', str(cls), img_name), exist_ok=True)
+    for ( (img_id, img_name, img_names, image, label), cls ) in zip(false_img_dataset, labels):
+        os.makedirs(os.path.join(DATA_ROOT_DIR, 'clustering', '0', str(cls), img_name), exist_ok=True)
         img_names = img_names.split(',')
         print(cls, img_name)
         for idx, path in enumerate( img_names ):
             pil_img = load_image(path)
             pil_img.save(os.path.join(DATA_ROOT_DIR,\
-                    'clustering', '1', str(cls), img_name, str( idx + 1 ) + '.png'))
+                    'clustering', '0', img_name + '_' + 'idx' + str( idx + 1 ) + '_' + 'cls' + str(cls) + '.png'))
