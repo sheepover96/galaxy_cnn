@@ -18,7 +18,9 @@ import sys
 
 TRUE_DATA_NUM = 12263
 
-DIMENSION = 30
+DIMENSION = 50
+NCLUSTERS = 15
+NITER = 500
 
 picture_category_num = 9
 feature_category_num = 512
@@ -103,11 +105,13 @@ if __name__ == '__main__':
     input_file_path = os.path.join(ROOT_DIR, 'dataset', DATASET)
     true_img_dataset = PngImageDataset(input_file_path, DATA_ROOT_DIR, 1, transform=transforms.Compose([
         transforms.CenterCrop(IMG_SIZE),
-        ]), start=1, end=10)
+        ]), start=1, end=TRUE_DATA_NUM)
 
     false_img_dataset = PngImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose([
         transforms.CenterCrop(IMG_SIZE)
         ]))
+
+    print(len(true_img_dataset))
 
     true_imgs = []
     for (img_id, img_name, img_names, image, label) in true_img_dataset:
@@ -131,14 +135,15 @@ if __name__ == '__main__':
 
     mini_true_imgs_flat = true_imgs_flat.dot(w)
 
-    km = KMeans(n_clusters=5, max_iter=200)
-    result = km.fit(mini_true_imgs_flat.transpose())
+    km = KMeans(n_clusters=NCLUSTERS, max_iter=NITER)
+    result = km.fit(mini_true_imgs_flat)
 
     labels = result.labels_
 
     for ( (img_id, img_name, img_names, image, label), cls ) in zip(true_img_dataset, labels):
         os.makedirs(os.path.join(DATA_ROOT_DIR, 'clustering', '1', str(cls), img_name), exist_ok=True)
         img_names = img_names.split(',')
+        print(cls, img_name)
         for idx, path in enumerate( img_names ):
             pil_img = load_image(path)
             pil_img.save(os.path.join(DATA_ROOT_DIR,\
