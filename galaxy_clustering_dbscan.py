@@ -11,6 +11,7 @@ from sklearn.feature_extraction.text import TfidfTransformer
 import mahotas as mh
 from mahotas.features import surf
 from astropy.io import fits
+import skimage.measure
 
 import os
 import sys
@@ -113,7 +114,8 @@ if __name__ == '__main__':
 
     true_imgs = []
     for (img_id, img_name, img_names, image, label) in false_img_dataset:
-        true_imgs.append(image)
+        reduced_img = np.dstack([ measure.reduction(image[:,:,i], (5,5), np.mean)  for i in range(IMG_CHANNEL) ])
+        true_imgs.append(reduced_img)
 
     true_imgs_np = np.array(true_imgs)
     true_imgs_flat = true_imgs_np.reshape(len(true_imgs_np),-1).astype(np.float64)

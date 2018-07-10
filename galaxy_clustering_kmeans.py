@@ -114,25 +114,27 @@ if __name__ == '__main__':
 
     true_imgs = []
     for (img_id, img_name, img_names, image, label) in false_img_dataset:
-        true_imgs.append(image)
+        reduced_img = np.dstack([ measure.reduction(image[:,:,i], (5,5), np.mean)  for i in range(IMG_CHANNEL) ])
+        true_imgs.append(reduced_img)
 
     true_imgs_np = np.array(true_imgs)
     true_imgs_flat = true_imgs_np.reshape(len(true_imgs_np),-1).astype(np.float64)
+    print(true_imgs_flat.shape)
 
     ## dimension reduction by PCA
-    sc = StandardScaler()
-    true_imgs_std = sc.fit_transform(true_imgs_flat.transpose())
-    cov_mat = np.cov(true_imgs_std)
-    eigen_vals, eigen_vecs = np.linalg.eig(cov_mat)
+    #sc = StandardScaler()
+    #true_imgs_std = sc.fit_transform(true_imgs_flat.transpose())
+    #cov_mat = np.cov(true_imgs_std)
+    #eigen_vals, eigen_vecs = np.linalg.eig(cov_mat)
 
-    eigen_pairs = [(np.abs(eigen_vals[i]), eigen_vecs[i]) for i in range(len(eigen_vals))]
-    eigen_pairs.sort(key=lambda k: k[0], reverse=True)
-    w = np.hstack([ eigen_pairs[i][1][:, np.newaxis] for i in range(DIMENSION) ])
+    #eigen_pairs = [(np.abs(eigen_vals[i]), eigen_vecs[i]) for i in range(len(eigen_vals))]
+    #eigen_pairs.sort(key=lambda k: k[0], reverse=True)
+    #w = np.hstack([ eigen_pairs[i][1][:, np.newaxis] for i in range(DIMENSION) ])
 
-    mini_true_imgs_flat = true_imgs_flat.dot(w)
+    #mini_true_imgs_flat = true_imgs_flat.dot(w)
 
     km = KMeans(n_clusters=NCLUSTERS, max_iter=NITER)
-    result = km.fit(mini_true_imgs_flat)
+    result = km.fit(true_imgs_flat)
 
     labels = result.labels_
 
