@@ -1,4 +1,4 @@
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, ConcatDataset
 from torchvision import transforms
 
 from PIL import Image
@@ -11,6 +11,7 @@ from sklearn.feature_extraction.text import TfidfTransformer
 import mahotas as mh
 from mahotas.features import surf
 from astropy.io import fits
+import matplotlib.pyplot as plt
 
 import os
 import sys
@@ -19,8 +20,8 @@ import sys
 TRUE_DATA_NUM = 12263
 
 DIMENSION = 50
-NCLUSTERS = 15
-NITER = 500
+NCLUSTERS = 100
+NITER = 300
 
 picture_category_num = 9
 feature_category_num = 512
@@ -108,20 +109,21 @@ if __name__ == '__main__':
         ]), start=1, end=TRUE_DATA_NUM)
 
     false_img_dataset = PngImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose([
-        transforms.CenterCrop(IMG_SIZE)
+        transforms.CenterCrop(IMG_SIZE),
         ]))
 
+    all_img_dataset = ConcatDataset([true_img_dataset, false_img_dataset])
 
     true_imgs = []
-    for (img_id, img_name, img_names, image, label) in false_img_dataset:
-        reduced_img = np.dstack([ measure.reduction(image[:,:,i], (5,5), np.mean)  for i in range(IMG_CHANNEL) ])
+    for (img_id, img_name, img_names, image, label) in all_img_dataset:
+        normalized_img = normalize(image)
+        reduced_img = np.dstack([ measure.reduction(normalized_img[:,:,i], (5,5), np.mean)  for i in range(IMG_CHANNEL) ])
         true_imgs.append(reduced_img)
 
     true_imgs_np = np.array(true_imgs)
     true_imgs_flat = true_imgs_np.reshape(len(true_imgs_np),-1).astype(np.float64)
     print(true_imgs_flat.shape)
 
-    ## dimension reduction by PCA
     #sc = StandardScaler()
     #true_imgs_std = sc.fit_transform(true_imgs_flat.transpose())
     #cov_mat = np.cov(true_imgs_std)
@@ -129,6 +131,7 @@ if __name__ == '__main__':
 
     #eigen_pairs = [(np.abs(eigen_vals[i]), eigen_vecs[i]) for i in range(len(eigen_vals))]
     #eigen_pairs.sort(key=lambda k: k[0], reverse=True)
+    #eigen_vals.sort(key=lambda k: k, reverse=True)
     #w = np.hstack([ eigen_pairs[i][1][:, np.newaxis] for i in range(DIMENSION) ])
 
     #mini_true_imgs_flat = true_imgs_flat.dot(w)
@@ -138,11 +141,21 @@ if __name__ == '__main__':
 
     labels = result.labels_
 
-    for ( (img_id, img_name, img_names, image, label), cls ) in zip(false_img_dataset, labels):
-        os.makedirs(os.path.join(DATA_ROOT_DIR, 'clustering', '0', str(cls), img_name), exist_ok=True)
+    result = [ [ 0 for j in range(NCLUSTERS)] for i in range(2)]
+
+    for ( (img_id, img_name, img_names, image, label), cls ) in zip(all_img_dataset, labels):
+        os.makedirs(os.path.join(DATA_ROOT_DIR, 'kmeans_clustering', 'all2', str(cls), img_name), exist_ok=True)
         img_names = img_names.split(',')
         print(cls, img_name)
+        result[int(label)][int(cls)] = result[int(label)][int(cls)] + 1
         for idx, path in enumerate( img_names ):
             pil_img = load_image(path)
             pil_img.save(os.path.join(DATA_ROOT_DIR,\
-                    'clustering', '0', img_name + '_' + 'idx' + str( idx + 1 ) + '_' + 'cls' + str(cls) + '.png'))
+                    'kmeans_clustering', 'all2', img_name + '_' + 'idx' + str( idx + 1 ) + '_' + 'cls' + str(cls) + '.png'))
+    print(result)
+    p1 = plt.bar(range(NCLUSTERS), result[0], color="blue")
+    p2 = plt.bar(range(NCLUSTERS), result[1], bottom=result[0], color="orange")
+    plt.legend(p1[0], p2[0], ('False', 'True'))
+    plt.xlabel('cluster number')
+    plt.xlabel('num of image')
+    plt.show()
