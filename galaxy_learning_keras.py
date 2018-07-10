@@ -1,8 +1,7 @@
 from keras.callbacks import EarlyStopping
-from keras.layers.convolutional import Conv2D
 from keras.layers.convolutional import MaxPooling2D
-from keras.layers.core import Activation, Dense, Dropout, Flatten
-from keras.models import Sequential, load_model
+from keras.layers import Conv2D, MaxPool2D, Flatten, Dense, Input, Subtract, Lambda
+from keras.models import Model, Sequential, load_model
 from keras.optimizers import Adam
 from keras.preprocessing.image import ImageDataGenerator
 from keras.preprocessing.image import array_to_img, img_to_array, list_pictures, load_img
@@ -78,7 +77,7 @@ class DatasetLoader:
         for i in range(CLASS_NUM):
             if i == 1:
                 tmp_dataframe = data_frame[data_frame[LABEL_IDX]==i]
-                self.dataset_frame_list.append(tmp_dataframe.sample(n=5000))
+                self.dataset_frame_list.append(tmp_dataframe[1:263])
             else:
                 self.dataset_frame_list.append(data_frame[data_frame[LABEL_IDX]==i])
             self.dataset.append( self.create_dataset(i) )
