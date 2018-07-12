@@ -124,6 +124,11 @@ class DatasetLoader:
         img = img[startpos:startpos+pickup_size, startpos:startpos+pickup_size]
         return img
 
+    def crop_center(self, img,cropx,cropy):
+        y,x,z = img.shape
+        startx = x//2-(cropx//2)
+        starty = y//2-(cropy//2)
+        return img[starty:starty+cropy,startx:startx+cropx,:]
 
     def median_filter(image, ksize):
         # 畳み込み演算をしない領域の幅
@@ -218,9 +223,9 @@ class GalaxyClassifier:
 
     def evaluate(self, test_image_set, test_label_set):
         test_image_set = np.array(test_image_set)
+        test_image_set = test_image_set.reshape(test_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
         test_label_set = np.array(test_label_set)
         test_label_set = to_categorical(test_label_set)
-        test_image_set = test_image_set.reshape(test_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
         score = self.model.evaluate(test_image_set, test_label_set, verbose=0)
         pred = self.model.predict_classes(test_image_set)
         return score, pred
