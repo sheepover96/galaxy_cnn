@@ -44,14 +44,14 @@ input_shape = (50, 50, IMG_CHANNEL)
 
 train_test_split_rate = 0.8
 #train_test_split_rate = 1
-nb_epoch = 1
+nb_epoch = 40
 batch_size = 10
 validation_split = 0.1
 #validation_split = 0.0
 
 
 BATCH_SIZE = 10
-NEPOCH = 100
+NEPOCH = 1
 KFOLD = 5
 
 IMG_IDX = 2
@@ -78,7 +78,7 @@ class DatasetLoader:
         for i in range(CLASS_NUM):
             if i == 1:
                 tmp_dataframe = data_frame[data_frame[LABEL_IDX]==i]
-                self.dataset_frame_list.append(tmp_dataframe[1:5000])
+                self.dataset_frame_list.append(tmp_dataframe)
             else:
                 self.dataset_frame_list.append(data_frame[data_frame[LABEL_IDX]==i])
             self.dataset.append( self.create_dataset(i) )
@@ -305,6 +305,10 @@ if __name__ == "__main__":
 
         tmp_false_train_data = false_train_data
         false_train_data = []
+        print(len(true_train_data))
+        print(len(false_train_data))
+        naugumentation = int( len(true_train_data)/len(tmp_false_train_data) )
+        print(naugumentation)
         for idx, data in enumerate( tmp_false_train_data ):
             label = data[0]
             img = data[1]
@@ -313,7 +317,7 @@ if __name__ == "__main__":
             img_names = data[4]
             expanded_image = np.expand_dims(img, axis=0)
             generator = datagen.flow(expanded_image, batch_size=1, save_prefix='img', save_format='png')
-            for ite in range(19):
+            for ite in range(naugumentation):
                 batch = generator.next()
                 false_train_data.append( (label, batch[0], img_no, img_name, img_names) )
 
@@ -347,6 +351,11 @@ if __name__ == "__main__":
         test_catalog_ids_set = true_test_catalog_ids_set + false_test_catalog_ids_set
         test_png_img_set = true_test_png_img_set + false_test_png_img_set
         test_paths_set = true_test_paths_set + false_test_paths_set
+
+        print('true train', len(true_train_img))
+        print('true test', len(true_test_img))
+        print('false train', len(false_train_img))
+        print('false test', len(false_test_img))
 
         accracies = []
         galaxyClassifier = GalaxyClassifier()
