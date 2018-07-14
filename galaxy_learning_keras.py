@@ -44,7 +44,7 @@ input_shape = (50, 50, IMG_CHANNEL)
 
 train_test_split_rate = 0.8
 #train_test_split_rate = 1
-nb_epoch = 1000
+nb_epoch = 40
 batch_size = 10
 validation_split = 0.1
 #validation_split = 0.0
