@@ -176,4 +176,4 @@ if __name__ == '__main__':
     #plt.legend(( p1[0], p2[0] ), ('False', 'True'))
     #plt.xlabel('cluster number')
     #plt.xlabel('num of image')
-    #plt.show()
+    plt.show()
