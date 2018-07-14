@@ -124,7 +124,6 @@ class DatasetLoader:
         img = img[startpos:startpos+pickup_size, startpos:startpos+pickup_size]
         return img
 
-
     def median_filter(image, ksize):
         # 畳み込み演算をしない領域の幅
         d = int((ksize - 1) / 2)
@@ -170,7 +169,6 @@ class DatasetLoader:
                     elif pixel - dst[y, x, i] > means[i]:
                         result[y, x, i] = dst[y, x, i]
         return result
-
 
 
 class GalaxyClassifier:
@@ -317,6 +315,8 @@ if __name__ == "__main__":
         true_train_label = list(map(lambda data: data[0], true_train_data))
         true_test_img = list(map(lambda data: data[1], true_test_data))
         true_test_label = list(map(lambda data: data[0], true_test_data))
+        true_test_paths_set = list(map(lambda data: data[0], true_test_data))
+        true_test_catalog_ids_set = list(map(lambda data: data[0], true_test_data))
         false_train_img = list(map(lambda data: data[1], false_train_data))
         false_train_label = list(map(lambda data: data[0], false_train_data))
         false_test_img = list(map(lambda data: data[1], false_test_data))
@@ -372,4 +372,7 @@ if __name__ == "__main__":
 
         print("average accuracy = %s" % (sum(accuracies)/len(accuracies)))
 
-        #galaxyClassifier.predictAll(dataset.test_image_set, dataset.test_label_set, dataset.test_image_paths_set, dataset.test_catalog_ids_set, dataset.test_combined_img_path_set)
+        galaxyClassifier.predictAll(
+                test_img, test_label,
+                test_image_paths_set, dataset.test_catalog_ids_set,
+                dataset.test_combined_img_path_set)
