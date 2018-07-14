@@ -44,7 +44,7 @@ input_shape = (50, 50, IMG_CHANNEL)
 
 train_test_split_rate = 0.8
 #train_test_split_rate = 1
-nb_epoch = 1
+nb_epoch = 1000
 batch_size = 10
 validation_split = 0.1
 #validation_split = 0.0
@@ -78,7 +78,7 @@ class DatasetLoader:
         for i in range(CLASS_NUM):
             if i == 1:
                 tmp_dataframe = data_frame[data_frame[LABEL_IDX]==i]
-                self.dataset_frame_list.append(tmp_dataframe.sample(n=253))
+                self.dataset_frame_list.append(tmp_dataframe[1:263])
             else:
                 self.dataset_frame_list.append(data_frame[data_frame[LABEL_IDX]==i])
             self.dataset.append( self.create_dataset(i) )
@@ -201,7 +201,7 @@ class GalaxyClassifier:
 
 
     def train(self, train_image_set, train_label_set):
-        optimizer = Adam(lr=0.001)
+        optimizer = Adam(lr=0.0001)
         self.model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
         train_image_set = np.array(train_image_set)
         train_image_set = train_image_set.reshape(train_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
@@ -292,24 +292,29 @@ if __name__ == "__main__":
         false_train_data = [false_dataset[i] for i in false_train_idx]
         false_test_data = [false_dataset[i] for i in false_test_idx]
 
+        print('true train', len(true_train_data))
+        print('true test', len(true_test_data))
+        print('false train', len(false_train_data))
+        print('false test', len(false_test_data))
+
         #data augumentation
         datagen = ImageDataGenerator(
             horizontal_flip=True,
             vertical_flip=True)
 
         tmp_false_train_data = false_train_data
-        false_train_data = []
-        for idx, data in enumerate( tmp_false_train_data ):
-            label = data[0]
-            img = data[1]
-            img_no = data[2]
-            img_name = data[3]
-            img_names = data[4]
-            expanded_image = np.expand_dims(img, axis=0)
-            generator = datagen.flow(expanded_image, batch_size=1, save_prefix='img', save_format='png')
-            for ite in range(19):
-                batch = generator.next()
-                false_train_data.append( (label, batch[0], img_no, img_name, img_names) )
+        #false_train_data = []
+        #for idx, data in enumerate( tmp_false_train_data ):
+        #    label = data[0]
+        #    img = data[1]
+        #    img_no = data[2]
+        #    img_name = data[3]
+        #    img_names = data[4]
+        #    expanded_image = np.expand_dims(img, axis=0)
+        #    generator = datagen.flow(expanded_image, batch_size=1, save_prefix='img', save_format='png')
+        #    for ite in range(19):
+        #        batch = generator.next()
+        #        false_train_data.append( (label, batch[0], img_no, img_name, img_names) )
 
         true_train_img = list(map(lambda data: data[1], true_train_data))
         true_train_label = list(map(lambda data: data[0], true_train_data))
