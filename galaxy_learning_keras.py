@@ -357,6 +357,11 @@ if __name__ == "__main__":
         print('false train', len(false_train_img))
         print('false test', len(false_test_img))
 
+        print('true train', len(true_train_img))
+        print('true test', len(true_test_img))
+        print('false train', len(false_train_img))
+        print('false test', len(false_test_img))
+
         accracies = []
         galaxyClassifier = GalaxyClassifier()
         galaxyClassifier.build_model_lae()
