@@ -66,19 +66,20 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 PNG_IMG_DIR = '/home/okura/research/project/hsc/png_images'
 
 SAVE_DIR = '/Users/sheep/documents/research/project/hsc/saved_data'
+SAVE_MODEL_DIR = '/home/okura/research/project/hsc/model/keras/under_sampling/'
 
 save_mode = True
 
 class DatasetLoader:
 
-    def __init__(self, csv_file_path, root_dir):
+    def __init__(self, csv_file_path, root_dir, start=1, end=12266):
         data_frame = pd.read_csv(csv_file_path, header=None)
         self.dataset_frame_list = []
         self.dataset = []
         for i in range(CLASS_NUM):
             if i == 1:
                 tmp_dataframe = data_frame[data_frame[LABEL_IDX]==i]
-                self.dataset_frame_list.append(tmp_dataframe[1:263])
+                self.dataset_frame_list.append(tmp_dataframe[start:end])
             else:
                 self.dataset_frame_list.append(data_frame[data_frame[LABEL_IDX]==i])
             self.dataset.append( self.create_dataset(i) )
@@ -272,9 +273,16 @@ if __name__ == "__main__":
 
 
     #create dataset for cross validation
-    dataset = DatasetLoader(argv[1], DATA_ROOT_DIR)
+    dataset = DatasetLoader(argv[1], DATA_ROOT_DIR, 1, 263)
     true_dataset = dataset.get_dataset(1)
     false_dataset = dataset.get_dataset(0)
+
+    other_true_dataset = DatasetLoader(argv[1], DATA_ROOT_DIR, start=264)
+    other_true_test_img = list(map(lambda data: data[1], other_true_dataset))
+    other_true_test_label = list(map(lambda data: data[0], other_true_dataset))
+    other_true_test_catalog_ids_set = list(map(lambda data: data[2], other_true_dataset))
+    other_true_test_png_img_set = list(map(lambda data: data[3], other_true_dataset))
+    other_true_test_paths_set = list(map(lambda data: data[4], other_true_dataset))
 
     kfold = KFold(n_splits=5)
 
@@ -330,9 +338,9 @@ if __name__ == "__main__":
 
         false_test_img = list(map(lambda data: data[1], false_test_data))
         false_test_label = list(map(lambda data: data[0], false_test_data))
-        false_test_catalog_ids_set = list(map(lambda data: data[2], true_test_data))
-        false_test_png_img_set = list(map(lambda data: data[3], true_test_data))
-        false_test_paths_set = list(map(lambda data: data[4], true_test_data))
+        false_test_catalog_ids_set = list(map(lambda data: data[2], false_test_data))
+        false_test_png_img_set = list(map(lambda data: data[3], false_test_data))
+        false_test_paths_set = list(map(lambda data: data[4], false_test_data))
 
         print('TRUE TRAIN', len(true_train_img))
         print('TRUE TEST', len(true_test_img))
@@ -392,3 +400,5 @@ if __name__ == "__main__":
                 test_paths_set, test_catalog_ids_set,
                 test_png_img_set
                 )
+
+        GalaxyClassifier.model.save(os.path.join(SAVE_MODEL_DIR, '{}_model.h5'.format(fold_idx)))
