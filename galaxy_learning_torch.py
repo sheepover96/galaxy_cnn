@@ -332,19 +332,6 @@ if __name__ == '__main__':
         #transforms.Normalize((0.1307,), (0.3081,))
         ]))
 
-    #false data augumentation
-    tf_combinations = get_transform_combination2()
-    for i in range(18):
-        for tf in tf_combinations:
-            tf1 = []
-            tf1.extend(tf)
-            tf1.append(transforms.CenterCrop(IMG_SIZE))
-            tf1.append(transforms.ToTensor())
-            false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
-                tf1
-            ))
-            false_img_dataset = ConcatDataset([false_img_dataset, false_aug])
-
     kfold = KFold(n_splits=KFOLD)
 
     true_dataset_fold = kfold.split(true_img_dataset)
@@ -366,6 +353,7 @@ if __name__ == '__main__':
             for tf in tf_combinations:
                 tf1 = []
                 tf1.append(transforms.CenterCrop(IMG_SIZE))
+                tf1.append(transforms.Normalize(64, 16))
                 tf1.extend(tf)
                 tf1.append(transforms.ToTensor())
                 false_aug = ImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose(
@@ -383,7 +371,11 @@ if __name__ == '__main__':
         test_data = ConcatDataset([true_test_data, false_test_data])
         pr_test_data = ConcatDataset([pr_true_test_data, pr_false_test_data])
 
+<<<<<<< HEAD
         train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
+=======
+        train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=False)
+>>>>>>> 509a61827dd5a2169fb28002c4eba45e207353e1
         test_loader = DataLoader(test_data, batch_size=1, shuffle=False)
         pr_test_loader = DataLoader(pr_test_data, batch_size=1, shuffle=False)
 

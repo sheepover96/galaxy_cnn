@@ -334,6 +334,11 @@ if __name__ == "__main__":
         print('FALSE TRAIN', len(false_train_img))
         print('FALSE TRAIN', len(false_test_img))
 
+        print('TRUE TRAIN', len(true_train_img))
+        print('TRUE TEST', len(true_test_img))
+        print('FALSE TRAIN', len(false_train_img))
+        print('FALSE TRAIN', len(false_test_img))
+
         train_img = true_train_img + false_train_img
         train_label = true_train_label + false_train_label
         test_img = true_test_img + false_test_img
