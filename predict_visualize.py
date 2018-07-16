@@ -97,7 +97,6 @@ for i, row in enumerate(reader):
     img_paths = []
     for path in paths:
         print(path)
-        #replaced = path.replace('/disk/cos/ono', '/Users/daiz/disk/cos/ono')
         path = FILE_HOME + path
         img_paths.append(path)
     (png_img_paths, raw_image_path) = to_png_and_save(img_paths)
