@@ -387,7 +387,7 @@ if __name__ == '__main__':
             test_loss.append(tloss)
             test_acc.append(acc)
 
-        result_file = '{}_{}_{}'.format(1, fold_idx, RESULT_FILE)
+        result_file = '{}_{}_{}'.format(split, fold_idx, RESULT_FILE)
         result_file_path = os.path.join(RESULT_FILE_PATH, result_file)
         acc, matrix = predict(model, pr_test_loader, result_file_path)
         accuracy.append(acc.item())
@@ -410,10 +410,10 @@ if __name__ == '__main__':
         figR.set_xlim(0, NEPOCH)
         figR.grid(True)
 
-        #graph_name = '{}_{}_result.png'.format(split, fold_idx)
+        graph_name = '{}_{}_result.png'.format(split, fold_idx)
 
-        #print('save result image:', graph_name)
-        #fig.savefig(os.path.join('result', 'graph', graph_name))
+        print('save result image:', graph_name)
+        fig.savefig(os.path.join('result', 'graph', graph_name))
 
     print('mean', accuracy)
     #fig.show()
