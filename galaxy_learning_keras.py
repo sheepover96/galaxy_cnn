@@ -335,9 +335,9 @@ if __name__ == "__main__":
 
         false_test_img = list(map(lambda data: data[1], false_test_data))
         false_test_label = list(map(lambda data: data[0], false_test_data))
-        false_test_catalog_ids_set = list(map(lambda data: data[2], true_test_data))
-        false_test_png_img_set = list(map(lambda data: data[3], true_test_data))
-        false_test_paths_set = list(map(lambda data: data[4], true_test_data))
+        false_test_catalog_ids_set = list(map(lambda data: data[2], false_test_data))
+        false_test_png_img_set = list(map(lambda data: data[3], false_test_data))
+        false_test_paths_set = list(map(lambda data: data[4], false_test_data))
 
         print('TRUE TRAIN', len(true_train_img))
         print('TRUE TEST', len(true_test_img))
