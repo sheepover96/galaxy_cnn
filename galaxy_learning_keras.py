@@ -71,14 +71,14 @@ save_mode = True
 
 class DatasetLoader:
 
-    def __init__(self, csv_file_path, root_dir):
+    def __init__(self, csv_file_path, root_dir, start=1, end=12266):
         data_frame = pd.read_csv(csv_file_path, header=None)
         self.dataset_frame_list = []
         self.dataset = []
         for i in range(CLASS_NUM):
             if i == 1:
                 tmp_dataframe = data_frame[data_frame[LABEL_IDX]==i]
-                self.dataset_frame_list.append(tmp_dataframe[1:5000])
+                self.dataset_frame_list.append(tmp_dataframe[start:end])
             else:
                 self.dataset_frame_list.append(data_frame[data_frame[LABEL_IDX]==i])
             self.dataset.append( self.create_dataset(i) )
@@ -272,9 +272,17 @@ if __name__ == "__main__":
 
 
     #create dataset for cross validation
-    dataset = DatasetLoader(argv[1], DATA_ROOT_DIR)
+    dataset = DatasetLoader(argv[1], DATA_ROOT_DIR, 1, 5000)
     true_dataset = dataset.get_dataset(1)
     false_dataset = dataset.get_dataset(0)
+
+    other_true_dataset = DatasetLoader(argv[1], DATA_ROOT_DIR, start=264)
+    other_true_test_img = list(map(lambda data: data[1], other_true_dataset))
+    other_true_test_label = list(map(lambda data: data[0], other_true_dataset))
+    other_true_test_catalog_ids_set = list(map(lambda data: data[2], other_true_dataset))
+    other_true_test_png_img_set = list(map(lambda data: data[3], other_true_dataset))
+    other_true_test_paths_set = list(map(lambda data: data[4], other_true_dataset))
+
 
     kfold = KFold(n_splits=5)
 
@@ -370,8 +378,9 @@ if __name__ == "__main__":
         #plt.show()
         plt.savefig("{}_kaccuracy.png".format(fold_idx))
 
-        plt.plot(range(epochs), acc, marker='.', label='loss')
-        plt.plot(range(epochs), val_acc, marker='.', label='val_loss')
+        plt.figure()
+        plt.plot(range(epochs), loss, marker='.', label='loss')
+        plt.plot(range(epochs), val_loss, marker='.', label='val_loss')
         plt.legend(loc='best')
         plt.grid()
         plt.xlabel('epoch')
