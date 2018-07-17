@@ -276,7 +276,7 @@ if __name__ == "__main__":
     true_dataset = dataset.get_dataset(1)
     false_dataset = dataset.get_dataset(0)
 
-    other_true_dataset = DatasetLoader(argv[1], DATA_ROOT_DIR, start=264)
+    other_true_dataset = DatasetLoader(argv[1], DATA_ROOT_DIR, start=5001).get_dataset(1)
     other_true_test_img = list(map(lambda data: data[1], other_true_dataset))
     other_true_test_label = list(map(lambda data: data[0], other_true_dataset))
     other_true_test_catalog_ids_set = list(map(lambda data: data[2], other_true_dataset))
@@ -322,11 +322,11 @@ if __name__ == "__main__":
         true_train_img = list(map(lambda data: data[1], true_train_data))
         true_train_label = list(map(lambda data: data[0], true_train_data))
 
-        true_test_img = list(map(lambda data: data[1], true_test_data))
-        true_test_label = list(map(lambda data: data[0], true_test_data))
-        true_test_catalog_ids_set = list(map(lambda data: data[2], true_test_data))
-        true_test_png_img_set = list(map(lambda data: data[3], true_test_data))
-        true_test_paths_set = list(map(lambda data: data[4], true_test_data))
+        true_test_img = list(map(lambda data: data[1], true_test_data)) + other_true_test_img
+        true_test_label = list(map(lambda data: data[0], true_test_data)) + other_true_test_label
+        true_test_catalog_ids_set = list(map(lambda data: data[2], true_test_data)) + other_true_test_catalog_ids_set
+        true_test_png_img_set = list(map(lambda data: data[3], true_test_data)) + other_true_test_png_img_set
+        true_test_paths_set = list(map(lambda data: data[4], true_test_data)) + other_true_test_paths_set
 
         false_train_img = list(map(lambda data: data[1], false_train_data))
         false_train_label = list(map(lambda data: data[0], false_train_data))
