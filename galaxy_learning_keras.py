@@ -44,14 +44,14 @@ input_shape = (50, 50, IMG_CHANNEL)
 
 train_test_split_rate = 0.8
 #train_test_split_rate = 1
-nb_epoch = 40
+nb_epoch = 500
 batch_size = 10
 validation_split = 0.1
 #validation_split = 0.0
 
 
 BATCH_SIZE = 10
-NEPOCH = 100
+NEPOCH = 500
 KFOLD = 5
 
 IMG_IDX = 2
@@ -366,6 +366,7 @@ if __name__ == "__main__":
         val_acc = hist.history['val_acc']
         loss = hist.history['loss']
         val_loss = hist.history['val_loss']
+        print(loss)
 
         epochs = len(acc)
         plt.figure()
