@@ -375,6 +375,7 @@ if __name__ == "__main__":
         val_loss = hist.history['val_loss']
 
         epochs = len(acc)
+        plt.figure()
         plt.plot(range(epochs), acc, marker='.', label='acc')
         plt.plot(range(epochs), val_acc, marker='.', label='val_acc')
         plt.legend(loc='best')
@@ -384,8 +385,9 @@ if __name__ == "__main__":
         #plt.show()
         plt.savefig("{}_kaccuracy.png".format(fold_idx))
 
-        plt.plot(range(epochs), acc, marker='.', label='loss')
-        plt.plot(range(epochs), val_acc, marker='.', label='val_loss')
+        plt.figure()
+        plt.plot(range(epochs), loss, marker='.', label='loss')
+        plt.plot(range(epochs), val_loss, marker='.', label='val_loss')
         plt.legend(loc='best')
         plt.grid()
         plt.xlabel('epoch')
