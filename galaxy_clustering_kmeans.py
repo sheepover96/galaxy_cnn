@@ -124,7 +124,7 @@ if __name__ == '__main__':
             n_components=3, init='random',
             random_state=101, method='barnes_hut', n_iter=1000, verbose=2
         )
-    for (img_id, img_name, img_names, image, label) in false_img_dataset:
+    for (img_id, img_name, img_names, image, label) in true_img_dataset:
         normalized_img = normalize(image)
         #reduced_img = np.dstack([ skimage.measure.block_reduce(normalized_img[:,:,i], (5,5), np.mean)  for i in range(IMG_CHANNEL) ])
         reduced_img = np.dstack([ tsne.fit_transform(normalized_img[:,:,i])  for i in range(IMG_CHANNEL) ])
@@ -154,26 +154,26 @@ if __name__ == '__main__':
 
     result = [ [ 0 for j in range(NCLUSTERS) ] for i in range(2)]
 
-    fig = plt.figure()
-    ax = fig.add_subplot(1,1,1)
-    for ( (img_id, img_name, img_names, image, label), cls ) in zip(false_img_dataset, labels):
-        os.makedirs(os.path.join(DATA_ROOT_DIR, 'kmeans_tsne', '0', str(cls), img_name), exist_ok=True)
+    #fig = plt.figure()
+    #ax = fig.add_subplot(1,1,1)
+    for ( (img_id, img_name, img_names, image, label), cls ) in zip(true_img_dataset, labels):
+        os.makedirs(os.path.join(DATA_ROOT_DIR, 'kmeans_tsne', '1', str(cls), img_name), exist_ok=True)
         img_names = img_names.split(',')
         print(cls, img_name)
         result[int(label)][int(cls)] = result[int(label)][int(cls)] + 1
         for idx, path in enumerate( img_names ):
             pil_img = load_image(path)
             pil_img.save(os.path.join(DATA_ROOT_DIR,\
-                    'kmeans_tsne', '0', img_name + '_' + 'idx' + str( idx + 1 ) + '_' + 'cls' + str(cls) + '.png'))
-            tsne_pil = tsne.fit_transform(pil_img)
-            ax.scatter(tsne_pil[0], tsne_pil[1], cmap='Blues')
+                    'kmeans_tsne', '1', img_name + '_' + 'idx' + str( idx + 1 ) + '_' + 'cls' + str(cls) + '.png'))
+            #tsne_pil = tsne.fit_transform(pil_img)
+            #ax.scatter(tsne_pil[0], tsne_pil[1], cmap='Blues')
 
-    fig.show()
+    #fig.show()
 
     print(result)
-    #p1 = plt.bar(range(NCLUSTERS), result[0], color="blue")
-    #p2 = plt.bar(range(NCLUSTERS), result[1], bottom=result[0], color="orange")
-    #plt.legend(( p1[0], p2[0] ), ('False', 'True'))
-    #plt.xlabel('cluster number')
-    #plt.xlabel('num of image')
+    p1 = plt.bar(range(NCLUSTERS), result[0], color="blue")
+    p2 = plt.bar(range(NCLUSTERS), result[1], bottom=result[0], color="orange")
+    plt.legend(( p1[0], p2[0] ), ('False', 'True'))
+    plt.xlabel('cluster number')
+    plt.xlabel('num of image')
     plt.show()
