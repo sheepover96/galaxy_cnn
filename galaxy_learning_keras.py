@@ -71,14 +71,14 @@ save_mode = True
 
 class DatasetLoader:
 
-    def __init__(self, csv_file_path, root_dir):
+    def __init__(self, csv_file_path, root_dir, start=1, end=12266):
         data_frame = pd.read_csv(csv_file_path, header=None)
         self.dataset_frame_list = []
         self.dataset = []
         for i in range(CLASS_NUM):
             if i == 1:
                 tmp_dataframe = data_frame[data_frame[LABEL_IDX]==i]
-                self.dataset_frame_list.append(tmp_dataframe.sample(n=5000))
+                self.dataset_frame_list.append(tmp_dataframe[start:end])
             else:
                 self.dataset_frame_list.append(data_frame[data_frame[LABEL_IDX]==i])
             self.dataset.append( self.create_dataset(i) )
@@ -227,13 +227,13 @@ class GalaxyClassifier:
         plot_model(self.model, to_file='model.png')
 
 
-    def predictAll(self, test_image_set, test_label_set, test_image_paths_set, test_catalog_ids_set, test_combined_img_path_set):
+    def predictAll(self, fold, test_image_set, test_label_set, test_image_paths_set, test_catalog_ids_set, test_combined_img_path_set):
         test_image_set = np.array(test_image_set)
         test_label_set = np.array(test_label_set)
         test_image_set = test_image_set.reshape(test_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
         test_label_set_categorical = to_categorical(test_label_set)
         predicted = self.model.predict(test_image_set)
-        self.__writeResultToCSV(zip(test_catalog_ids_set, test_image_paths_set, test_combined_img_path_set, test_label_set, predicted), './predict_result.csv')
+        self.__writeResultToCSV(zip(test_catalog_ids_set, test_image_paths_set, test_combined_img_path_set, test_label_set, predicted), 'result/{}_predict_result.csv'.format(fold))
         #for (correct_label, probabilities) in zip(test_label_set, predicted):
         #    print("correct label = %s, probabilities = [%s, %s]" % (correct_label, probabilities[0], probabilities[1]))
 
@@ -252,6 +252,7 @@ class GalaxyClassifier:
                 row = [cat_id, img_paths, combined_img_path, label, probabilities]
                 writer.writerow(row)
 
+
     def visualizeFeatureMaps(self, layer_num):
         W = self.model.layers[layer_num].get_weights()[0]
         W = W.transpose(3, 2, 1, 0)
@@ -266,6 +267,7 @@ class GalaxyClassifier:
             plt.imshow(im, cmap='gray')
         plt.show()
 
+
 if __name__ == "__main__":
     argv = sys.argv
     if len(argv) != 2:
@@ -274,9 +276,16 @@ if __name__ == "__main__":
 
 
     #create dataset for cross validation
-    dataset = DatasetLoader(argv[1], DATA_ROOT_DIR)
+    dataset = DatasetLoader(argv[1], DATA_ROOT_DIR, 1, 5000)
     true_dataset = dataset.get_dataset(1)
     false_dataset = dataset.get_dataset(0)
+
+    other_true_dataset = DatasetLoader(argv[1], DATA_ROOT_DIR, start=5001).get_dataset(1)
+    other_true_test_img = list(map(lambda data: data[1], other_true_dataset))
+    other_true_test_label = list(map(lambda data: data[0], other_true_dataset))
+    other_true_test_catalog_ids_set = list(map(lambda data: data[2], other_true_dataset))
+    other_true_test_png_img_set = list(map(lambda data: data[3], other_true_dataset))
+    other_true_test_paths_set = list(map(lambda data: data[4], other_true_dataset))
 
     kfold = KFold(n_splits=5)
 
@@ -291,6 +300,11 @@ if __name__ == "__main__":
         true_test_data = [true_dataset[i] for i in true_test_idx]
         false_train_data = [false_dataset[i] for i in false_train_idx]
         false_test_data = [false_dataset[i] for i in false_test_idx]
+
+        print('true train', len(true_train_data))
+        print('true test', len(true_test_data))
+        print('false train', len(false_train_data))
+        print('false test', len(false_test_data))
 
         #data augumentation
         datagen = ImageDataGenerator(
@@ -313,17 +327,34 @@ if __name__ == "__main__":
 
         true_train_img = list(map(lambda data: data[1], true_train_data))
         true_train_label = list(map(lambda data: data[0], true_train_data))
-        true_test_img = list(map(lambda data: data[1], true_test_data))
-        true_test_label = list(map(lambda data: data[0], true_test_data))
+
+        true_test_img = list(map(lambda data: data[1], true_test_data)) + other_true_test_img
+        true_test_label = list(map(lambda data: data[0], true_test_data)) + other_true_test_label
+        true_test_catalog_ids_set = list(map(lambda data: data[2], true_test_data)) + other_true_test_catalog_ids_set
+        true_test_png_img_set = list(map(lambda data: data[3], true_test_data)) + other_true_test_png_img_set
+        true_test_paths_set = list(map(lambda data: data[4], true_test_data)) + other_true_test_paths_set
+
         false_train_img = list(map(lambda data: data[1], false_train_data))
         false_train_label = list(map(lambda data: data[0], false_train_data))
+
         false_test_img = list(map(lambda data: data[1], false_test_data))
         false_test_label = list(map(lambda data: data[0], false_test_data))
+        false_test_catalog_ids_set = list(map(lambda data: data[2], false_test_data))
+        false_test_png_img_set = list(map(lambda data: data[3], false_test_data))
+        false_test_paths_set = list(map(lambda data: data[4], false_test_data))
+
+        print('TRUE TRAIN', len(true_train_img))
+        print('TRUE TEST', len(true_test_img))
+        print('FALSE TRAIN', len(false_train_img))
+        print('FALSE TRAIN', len(false_test_img))
 
         train_img = true_train_img + false_train_img
         train_label = true_train_label + false_train_label
         test_img = true_test_img + false_test_img
         test_label = true_test_label + false_test_label
+        test_catalog_ids_set = true_test_catalog_ids_set + false_test_catalog_ids_set
+        test_png_img_set = true_test_png_img_set + false_test_png_img_set
+        test_paths_set = true_test_paths_set + false_test_paths_set
 
         accracies = []
         galaxyClassifier = GalaxyClassifier()
@@ -334,8 +365,12 @@ if __name__ == "__main__":
 
         acc = hist.history['acc']
         val_acc = hist.history['val_acc']
+        loss = hist.history['loss']
+        val_loss = hist.history['val_loss']
+        print(loss)
 
         epochs = len(acc)
+        plt.figure()
         plt.plot(range(epochs), acc, marker='.', label='acc')
         plt.plot(range(epochs), val_acc, marker='.', label='val_acc')
         plt.legend(loc='best')
@@ -343,7 +378,17 @@ if __name__ == "__main__":
         plt.xlabel('epoch')
         plt.ylabel('acc')
         #plt.show()
-        plt.savefig("accuracy.png")
+        plt.savefig("{}_kaccuracy.png".format(fold_idx))
+
+        plt.figure()
+        plt.plot(range(epochs), loss, marker='.', label='loss')
+        plt.plot(range(epochs), val_loss, marker='.', label='val_loss')
+        plt.legend(loc='best')
+        plt.grid()
+        plt.xlabel('epoch')
+        plt.ylabel('loss')
+        #plt.show()
+        plt.savefig("{}_kloss.png".format(fold_idx))
 
         score, pred = galaxyClassifier.evaluate(test_img, test_label)
         print("%s: %.2f%%" % (galaxyClassifier.model.metrics_names[1], score[1] * 100))
@@ -354,4 +399,10 @@ if __name__ == "__main__":
 
         print("average accuracy = %s" % (sum(accuracies)/len(accuracies)))
 
-        #galaxyClassifier.predictAll(dataset.test_image_set, dataset.test_label_set, dataset.test_image_paths_set, dataset.test_catalog_ids_set, dataset.test_combined_img_path_set)
+        galaxyClassifier.predictAll(
+                fold_idx, test_img, test_label,
+                test_paths_set, test_catalog_ids_set,
+                test_png_img_set
+                )
+
+        galaxyClassifier.model.save(os.path.join(SAVE_MODEL_DIR, '{}_model.h5'.format(fold_idx)))
