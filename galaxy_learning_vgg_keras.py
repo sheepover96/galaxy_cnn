@@ -44,7 +44,7 @@ input_shape = (50, 50, IMG_CHANNEL)
 
 train_test_split_rate = 0.8
 #train_test_split_rate = 1
-nb_epoch = 20
+nb_epoch = 200
 batch_size = 10
 validation_split = 0.1
 #validation_split = 0.0
@@ -78,7 +78,7 @@ class DatasetLoader:
         for i in range(CLASS_NUM):
             if i == 1:
                 tmp_dataframe = data_frame[data_frame[LABEL_IDX]==i]
-                self.dataset_frame_list.append(tmp_dataframe.sample(n=5000))
+                self.dataset_frame_list.append(tmp_dataframe)
             else:
                 self.dataset_frame_list.append(data_frame[data_frame[LABEL_IDX]==i])
             self.dataset.append( self.create_dataset(i) )
