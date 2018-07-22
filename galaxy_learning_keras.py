@@ -55,7 +55,7 @@ NEPOCH = 100
 KFOLD = 5
 
 IMG_IDX = 2
-LABEL_IDX = IMG_CHANNEL + IMG_IDX
+LABEL_IDX = 2 +  IMG_CHANNEL + IMG_IDX
 PNG_LABEL_IDX = 2 + IMG_CHANNEL
 
 FILE_HOME = "/home/okura/research/project/hsc"
@@ -63,6 +63,7 @@ FILE_HOME = "/home/okura/research/project/hsc"
 DATA_ROOT_DIR = '/home/okura/research/project/hsc'
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
+PNG_IMG_DIR = '/home/okura/research/project/hsc/png_images'
 PNG_IMG_DIR = '/home/okura/research/project/hsc/png_images'
 
 SAVE_DIR = '/Users/sheep/documents/research/project/hsc/saved_data'
@@ -95,11 +96,10 @@ class DatasetLoader:
             img_names = row_data[2:IMG_IDX+IMG_CHANNEL]
             img_names = [ path for path in img_names ]
 
-            label = row_data[PNG_LABEL_IDX]
+            label = row_data[LABEL_IDX]
             #label = np_utils.to_categorical(label, num_classes=CLASS_NUM)
 
-            image = Image.open(os.path.join(PNG_IMG_DIR, png_img_name))
-            image = np.array(image)
+            image = self.load_image(img_names)
             image = self.crop_center(image, IMG_SIZE, IMG_SIZE)
 
             data_list.append( (label, image, img_no, png_img_name, img_names) )
@@ -112,7 +112,6 @@ class DatasetLoader:
         starty = y//2-(cropy//2)
         return img[starty:starty+cropy,startx:startx+cropx,:]
 
-
     def get_dataframe(self, label):
         return self.dataset_frame_list[label]
 
@@ -123,6 +122,18 @@ class DatasetLoader:
         startpos = int(original_size / 2) - int(pickup_size / 2)
         img = img[startpos:startpos+pickup_size, startpos:startpos+pickup_size]
         return img
+
+    def load_image(self, img_paths):
+        image_path_list = [self.root_dir + img_path for img_path in img_paths]
+        image_list = []
+        for filepath in image_path_list:
+            hdulist = fits.open(filepath)
+            row_data = hdulist[0].data
+            if row_data is None:
+                row_data = hdulist[1].data
+            image_list.append(row_data)
+        image = np.array([img for img in image_list]).transpose(1,2,0)
+        return image
 
     def median_filter(image, ksize):
         # 畳み込み演算をしない領域の幅
