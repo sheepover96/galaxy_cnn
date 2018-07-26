@@ -10,8 +10,6 @@ from keras.utils import np_utils
 from keras.utils import plot_model
 from keras.utils.np_utils import to_categorical
 
-from torchvision import transforms
-
 from astropy.io import fits
 
 from PIL import Image
@@ -46,7 +44,7 @@ input_shape = (50, 50, IMG_CHANNEL)
 
 train_test_split_rate = 0.8
 #train_test_split_rate = 1
-nb_epoch = 20
+nb_epoch = 40
 batch_size = 10
 validation_split = 0.1
 #validation_split = 0.0
@@ -86,7 +84,6 @@ class DatasetLoader:
             self.dataset.append( self.create_dataset(i) )
 
     def create_dataset(self, label):
-        imgCrop = transforms.CenterCrop(IMG_SIZE)
         data_frame = self.get_dataframe(label)
         data_list = []
 
@@ -102,12 +99,19 @@ class DatasetLoader:
             #label = np_utils.to_categorical(label, num_classes=CLASS_NUM)
 
             image = Image.open(os.path.join(PNG_IMG_DIR, png_img_name))
-            image = imgCrop(image)
             image = np.array(image)
+            image = self.crop_center(image, IMG_SIZE, IMG_SIZE)
 
             data_list.append( (label, image, img_no, png_img_name, img_names) )
 
         return data_list
+
+    def crop_center(self, img,cropx,cropy):
+        y,x,z = img.shape
+        startx = x//2-(cropx//2)
+        starty = y//2-(cropy//2)
+        return img[starty:starty+cropy,startx:startx+cropx,:]
+
 
     def get_dataframe(self, label):
         return self.dataset_frame_list[label]
@@ -119,7 +123,6 @@ class DatasetLoader:
         startpos = int(original_size / 2) - int(pickup_size / 2)
         img = img[startpos:startpos+pickup_size, startpos:startpos+pickup_size]
         return img
-
 
     def median_filter(image, ksize):
         # 畳み込み演算をしない領域の幅
@@ -166,7 +169,6 @@ class DatasetLoader:
                     elif pixel - dst[y, x, i] > means[i]:
                         result[y, x, i] = dst[y, x, i]
         return result
-
 
 
 class GalaxyClassifier:
@@ -223,13 +225,13 @@ class GalaxyClassifier:
         plot_model(self.model, to_file='model.png')
 
 
-    def predictAll(self, test_image_set, test_label_set, test_image_paths_set, test_catalog_ids_set, test_combined_img_path_set):
+    def predictAll(self, fold, test_image_set, test_label_set, test_image_paths_set, test_catalog_ids_set, test_combined_img_path_set):
         test_image_set = np.array(test_image_set)
         test_label_set = np.array(test_label_set)
         test_image_set = test_image_set.reshape(test_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
         test_label_set_categorical = to_categorical(test_label_set)
         predicted = self.model.predict(test_image_set)
-        self.__writeResultToCSV(zip(test_catalog_ids_set, test_image_paths_set, test_combined_img_path_set, test_label_set, predicted), './predict_result.csv')
+        self.__writeResultToCSV(zip(test_catalog_ids_set, test_image_paths_set, test_combined_img_path_set, test_label_set, predicted), 'result/{}_predict_result.csv'.format(fold))
         #for (correct_label, probabilities) in zip(test_label_set, predicted):
         #    print("correct label = %s, probabilities = [%s, %s]" % (correct_label, probabilities[0], probabilities[1]))
 
@@ -277,7 +279,9 @@ if __name__ == "__main__":
     kfold = KFold(n_splits=5)
 
     true_dataset_fold = kfold.split(true_dataset)
+    print(true_dataset_fold)
     false_dataset_fold = kfold.split(false_dataset)
+    print(false_dataset_fold)
 
     accuracies = []
     for fold_idx, ( (true_train_idx, true_test_idx), (false_train_idx, false_test_idx) ) in\
@@ -309,12 +313,26 @@ if __name__ == "__main__":
 
         true_train_img = list(map(lambda data: data[1], true_train_data))
         true_train_label = list(map(lambda data: data[0], true_train_data))
+
         true_test_img = list(map(lambda data: data[1], true_test_data))
         true_test_label = list(map(lambda data: data[0], true_test_data))
+        true_test_catalog_ids_set = list(map(lambda data: data[2], true_test_data))
+        true_test_png_img_set = list(map(lambda data: data[3], true_test_data))
+        true_test_paths_set = list(map(lambda data: data[4], true_test_data))
+
         false_train_img = list(map(lambda data: data[1], false_train_data))
         false_train_label = list(map(lambda data: data[0], false_train_data))
+
         false_test_img = list(map(lambda data: data[1], false_test_data))
         false_test_label = list(map(lambda data: data[0], false_test_data))
+        false_test_catalog_ids_set = list(map(lambda data: data[2], false_test_data))
+        false_test_png_img_set = list(map(lambda data: data[3], false_test_data))
+        false_test_paths_set = list(map(lambda data: data[4], false_test_data))
+
+        print('TRUE TRAIN', len(true_train_img))
+        print('TRUE TEST', len(true_test_img))
+        print('FALSE TRAIN', len(false_train_img))
+        print('FALSE TRAIN', len(false_test_img))
 
         print('TRUE TRAIN', len(true_train_img))
         print('TRUE TEST', len(true_test_img))
@@ -325,6 +343,9 @@ if __name__ == "__main__":
         train_label = true_train_label + false_train_label
         test_img = true_test_img + false_test_img
         test_label = true_test_label + false_test_label
+        test_catalog_ids_set = true_test_catalog_ids_set + false_test_catalog_ids_set
+        test_png_img_set = true_test_png_img_set + false_test_png_img_set
+        test_paths_set = true_test_paths_set + false_test_paths_set
 
         accracies = []
         galaxyClassifier = GalaxyClassifier()
@@ -339,6 +360,7 @@ if __name__ == "__main__":
         val_loss = hist.history['val_loss']
 
         epochs = len(acc)
+        plt.figure()
         plt.plot(range(epochs), acc, marker='.', label='acc')
         plt.plot(range(epochs), val_acc, marker='.', label='val_acc')
         plt.legend(loc='best')
@@ -366,4 +388,8 @@ if __name__ == "__main__":
 
         print("average accuracy = %s" % (sum(accuracies)/len(accuracies)))
 
-        #galaxyClassifier.predictAll(dataset.test_image_set, dataset.test_label_set, dataset.test_image_paths_set, dataset.test_catalog_ids_set, dataset.test_combined_img_path_set)
+        galaxyClassifier.predictAll(
+                fold_idx, test_img, test_label,
+                test_paths_set, test_catalog_ids_set,
+                test_png_img_set
+                )
