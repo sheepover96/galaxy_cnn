@@ -57,6 +57,7 @@ def normalize(image):
     print("min = %s, max = %s" % (normalized.min(), normalized.max()))
     return normalized
 
+
 def normalize_tmp(image):
     min_value = image.min()
     max_value = image.max()
@@ -65,6 +66,7 @@ def normalize_tmp(image):
     normalized = np.clip(normalized, normalized.min(), 255)
     print("min = %s, max = %s" % (normalized.min(), normalized.max()))
     return normalized
+
 
 def save_as_image(image, output_path):
     image = normalize(image)

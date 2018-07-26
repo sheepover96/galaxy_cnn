@@ -57,7 +57,11 @@ def normalize(image):
     return normalized
 
 def save_as_image(image, output_path):
-    image = normalize(image)
+    #image = normalize(image)
+    image = image + 0.5
+    #image = np.where(image > 3.5, 0, image)
+    image = image * 200 / 3.5
+    image = np.where(image > 255, 255, image)
     pil_img = Image.fromarray(np.uint8(image))
     pil_img.save(output_path)
 
@@ -102,7 +106,6 @@ for i, row in enumerate(reader):
         img_paths.append(path)
     (png_img_paths, raw_image_path) = to_png_and_save(img_paths)
     img_tds = ''.join([make_img_td(filepath) for filepath in png_img_paths])
-    combined_img_path = row[2].replace('/home/daiz', '/Users/daiz')
     label = row[3]
     #probabilities = [row[4], row[5]]
     probabilities = row[4][2:-2].split("', '")
@@ -118,7 +121,7 @@ for i, row in enumerate(reader):
     f_write.write("\t\t\t<td>%s</td>\n" % cat_id)
     f_write.write('\t\t\t%s\n' % make_img_td(raw_image_path))
     f_write.write('\t\t\t%s\n' % img_tds)
-    f_write.write('\t\t\t%s\n' % make_img_td(combined_img_path))
+    #f_write.write('\t\t\t%s\n' % make_img_td(combined_img_path))
     f_write.write("\t\t\t<td>%s</td>\n" % label)
     f_write.write('\t\t\t%s\n' % prob_tds)
     f_write.write('\t\t\t<td>%s</td>\n' % answer)
