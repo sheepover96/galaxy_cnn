@@ -10,17 +10,17 @@ import sys
 DATA_ROOT_DIR = '/Users/sheep/Documents/research/project/hsc'
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DATASET = 'dropout_test.csv'
+DATASET = 'dropout_multi_class.csv'
 SAVE_DIR = '/Users/sheep/Documents/research/project/hsc/png_images/'
-SAVE_FILE_NAME = 'dropout_png.csv'
+SAVE_FILE_NAME = 'dropout_png_multi_class.csv'
 
-IMG_CHANNEL = 4
+IMG_CHANNEL = 3
 
 ID_IDX = 0
 IMG_IDX = 2
 LABEL_IDX = IMG_CHANNEL + IMG_IDX
 
-IMG_SAVE = True
+IMG_SAVE = False
 
 
 def normalize(image):

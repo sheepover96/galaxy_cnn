@@ -32,19 +32,19 @@ import sys
 CLASS_NUM = 2 # the number of classes for classification
 
 #img_channels = 1
-img_channels = 4
-IMG_CHANNEL = 4
+img_channels = 3
+IMG_CHANNEL = 3
 IMG_SIZE = 50
 
 #input_shape = (1, 239, 239) # ( channels, cols, rows )
 raw_size = (239, 239, img_channels)
 #raw_size = (48, 48, img_channels)
-input_shape = (50, 50, IMG_CHANNEL)
+input_shape = (IMG_SIZE, IMG_SIZE, IMG_CHANNEL)
 #input_shape = (24, 24, img_channels)
 
 train_test_split_rate = 0.8
 #train_test_split_rate = 1
-nb_epoch = 40
+nb_epoch = 100
 batch_size = 10
 validation_split = 0.1
 #validation_split = 0.0
@@ -55,7 +55,7 @@ NEPOCH = 100
 KFOLD = 5
 
 IMG_IDX = 2
-LABEL_IDX = IMG_CHANNEL + IMG_IDX
+LABEL_IDX = 2 +  IMG_CHANNEL
 PNG_LABEL_IDX = 2 + IMG_CHANNEL
 
 FILE_HOME = "/home/okura/research/project/hsc"
@@ -64,6 +64,7 @@ DATA_ROOT_DIR = '/home/okura/research/project/hsc'
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 PNG_IMG_DIR = '/home/okura/research/project/hsc/png_images'
+PNG_IMG_DIR = '/home/okura/research/project/hsc/png_images'
 
 SAVE_DIR = '/Users/sheep/documents/research/project/hsc/saved_data'
 
@@ -71,14 +72,15 @@ save_mode = True
 
 class DatasetLoader:
 
-    def __init__(self, csv_file_path, root_dir):
+    def __init__(self, csv_file_path, root_dir, start=1, end=12266):
         data_frame = pd.read_csv(csv_file_path, header=None)
+        self.root_dir = root_dir
         self.dataset_frame_list = []
         self.dataset = []
         for i in range(CLASS_NUM):
             if i == 1:
                 tmp_dataframe = data_frame[data_frame[LABEL_IDX]==i]
-                self.dataset_frame_list.append(tmp_dataframe[1:5000])
+                self.dataset_frame_list.append(tmp_dataframe[start:end])
             else:
                 self.dataset_frame_list.append(data_frame[data_frame[LABEL_IDX]==i])
             self.dataset.append( self.create_dataset(i) )
@@ -95,12 +97,13 @@ class DatasetLoader:
             img_names = row_data[2:IMG_IDX+IMG_CHANNEL]
             img_names = [ path for path in img_names ]
 
-            label = row_data[PNG_LABEL_IDX]
+            label = row_data[LABEL_IDX]
             #label = np_utils.to_categorical(label, num_classes=CLASS_NUM)
 
-            image = Image.open(os.path.join(PNG_IMG_DIR, png_img_name))
-            image = np.array(image)
+            image = self.load_image(img_names)
             image = self.crop_center(image, IMG_SIZE, IMG_SIZE)
+            image = image + 0.5
+            image = np.where(image > 3.5, 3.5, image)
 
             data_list.append( (label, image, img_no, png_img_name, img_names) )
 
@@ -112,7 +115,6 @@ class DatasetLoader:
         starty = y//2-(cropy//2)
         return img[starty:starty+cropy,startx:startx+cropx,:]
 
-
     def get_dataframe(self, label):
         return self.dataset_frame_list[label]
 
@@ -123,6 +125,18 @@ class DatasetLoader:
         startpos = int(original_size / 2) - int(pickup_size / 2)
         img = img[startpos:startpos+pickup_size, startpos:startpos+pickup_size]
         return img
+
+    def load_image(self, img_paths):
+        image_path_list = [self.root_dir + img_path for img_path in img_paths]
+        image_list = []
+        for filepath in image_path_list:
+            hdulist = fits.open(filepath)
+            row_data = hdulist[0].data
+            if row_data is None:
+                row_data = hdulist[1].data
+            image_list.append(row_data)
+        image = np.array([img for img in image_list]).transpose(1,2,0)
+        return image
 
     def median_filter(image, ksize):
         # 畳み込み演算をしない領域の幅
@@ -195,13 +209,12 @@ class GalaxyClassifier:
         self.model.add(Flatten())
         self.model.add(Dense(16))
         self.model.add(Activation('relu'))
-        self.model.add(Dropout(0.5))
         self.model.add(Dense(CLASS_NUM))
         self.model.add(Activation('softmax'))
 
 
     def train(self, train_image_set, train_label_set):
-        optimizer = Adam(lr=0.001)
+        optimizer = Adam(lr=0.0001)
         self.model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
         train_image_set = np.array(train_image_set)
         train_image_set = train_image_set.reshape(train_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
@@ -272,9 +285,17 @@ if __name__ == "__main__":
 
 
     #create dataset for cross validation
-    dataset = DatasetLoader(argv[1], DATA_ROOT_DIR)
+    dataset = DatasetLoader(argv[1], DATA_ROOT_DIR, 1, 5000)
     true_dataset = dataset.get_dataset(1)
     false_dataset = dataset.get_dataset(0)
+
+    other_true_dataset = DatasetLoader(argv[1], DATA_ROOT_DIR, start=5001).get_dataset(1)
+    other_true_test_img = list(map(lambda data: data[1], other_true_dataset))
+    other_true_test_label = list(map(lambda data: data[0], other_true_dataset))
+    other_true_test_catalog_ids_set = list(map(lambda data: data[2], other_true_dataset))
+    other_true_test_png_img_set = list(map(lambda data: data[3], other_true_dataset))
+    other_true_test_paths_set = list(map(lambda data: data[4], other_true_dataset))
+
 
     kfold = KFold(n_splits=5)
 
@@ -314,11 +335,11 @@ if __name__ == "__main__":
         true_train_img = list(map(lambda data: data[1], true_train_data))
         true_train_label = list(map(lambda data: data[0], true_train_data))
 
-        true_test_img = list(map(lambda data: data[1], true_test_data))
-        true_test_label = list(map(lambda data: data[0], true_test_data))
-        true_test_catalog_ids_set = list(map(lambda data: data[2], true_test_data))
-        true_test_png_img_set = list(map(lambda data: data[3], true_test_data))
-        true_test_paths_set = list(map(lambda data: data[4], true_test_data))
+        true_test_img = list(map(lambda data: data[1], true_test_data)) + other_true_test_img
+        true_test_label = list(map(lambda data: data[0], true_test_data)) + other_true_test_label
+        true_test_catalog_ids_set = list(map(lambda data: data[2], true_test_data)) + other_true_test_catalog_ids_set
+        true_test_png_img_set = list(map(lambda data: data[3], true_test_data)) + other_true_test_png_img_set
+        true_test_paths_set = list(map(lambda data: data[4], true_test_data)) + other_true_test_paths_set
 
         false_train_img = list(map(lambda data: data[1], false_train_data))
         false_train_label = list(map(lambda data: data[0], false_train_data))
@@ -370,8 +391,9 @@ if __name__ == "__main__":
         #plt.show()
         plt.savefig("{}_kaccuracy.png".format(fold_idx))
 
-        plt.plot(range(epochs), acc, marker='.', label='loss')
-        plt.plot(range(epochs), val_acc, marker='.', label='val_loss')
+        plt.figure()
+        plt.plot(range(epochs), loss, marker='.', label='loss')
+        plt.plot(range(epochs), val_loss, marker='.', label='val_loss')
         plt.legend(loc='best')
         plt.grid()
         plt.xlabel('epoch')
