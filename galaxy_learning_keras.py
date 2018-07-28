@@ -32,19 +32,19 @@ import sys
 CLASS_NUM = 2 # the number of classes for classification
 
 #img_channels = 1
-img_channels = 4
-IMG_CHANNEL = 4
+img_channels = 3
+IMG_CHANNEL = 3
 IMG_SIZE = 50
 
 #input_shape = (1, 239, 239) # ( channels, cols, rows )
 raw_size = (239, 239, img_channels)
 #raw_size = (48, 48, img_channels)
-input_shape = (50, 50, IMG_CHANNEL)
+input_shape = (IMG_SIZE, IMG_SIZE, IMG_CHANNEL)
 #input_shape = (24, 24, img_channels)
 
 train_test_split_rate = 0.8
 #train_test_split_rate = 1
-nb_epoch = 40
+nb_epoch = 100
 batch_size = 10
 validation_split = 0.1
 #validation_split = 0.0
@@ -55,7 +55,7 @@ NEPOCH = 100
 KFOLD = 5
 
 IMG_IDX = 2
-LABEL_IDX = 2 +  IMG_CHANNEL + IMG_IDX
+LABEL_IDX = 2 +  IMG_CHANNEL
 PNG_LABEL_IDX = 2 + IMG_CHANNEL
 
 FILE_HOME = "/home/okura/research/project/hsc"
@@ -74,6 +74,7 @@ class DatasetLoader:
 
     def __init__(self, csv_file_path, root_dir, start=1, end=12266):
         data_frame = pd.read_csv(csv_file_path, header=None)
+        self.root_dir = root_dir
         self.dataset_frame_list = []
         self.dataset = []
         for i in range(CLASS_NUM):
@@ -101,6 +102,8 @@ class DatasetLoader:
 
             image = self.load_image(img_names)
             image = self.crop_center(image, IMG_SIZE, IMG_SIZE)
+            image = image + 0.5
+            image = np.where(image > 3.5, 3.5, image)
 
             data_list.append( (label, image, img_no, png_img_name, img_names) )
 
@@ -206,13 +209,12 @@ class GalaxyClassifier:
         self.model.add(Flatten())
         self.model.add(Dense(16))
         self.model.add(Activation('relu'))
-        self.model.add(Dropout(0.5))
         self.model.add(Dense(CLASS_NUM))
         self.model.add(Activation('softmax'))
 
 
     def train(self, train_image_set, train_label_set):
-        optimizer = Adam(lr=0.001)
+        optimizer = Adam(lr=0.0001)
         self.model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
         train_image_set = np.array(train_image_set)
         train_image_set = train_image_set.reshape(train_image_set.shape[0], input_shape[0], input_shape[1], input_shape[2])
