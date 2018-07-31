@@ -28,7 +28,7 @@ f_write.write("<html>\n")
 f_write.write("\t<table border='1'>\n")
 
 #header = ['catalog id', 'g band', 'r band', 'i band', 'combined img', 'correct label', 'False probability', 'True Probability', 'answer']
-header = ['catalog id', 'raw_image band2', 'band 1', 'band 2', 'band 3', 'band 4', 'combined img', 'correct label', 'False probability', 'True Probability', 'answer']
+header = ['catalog id', 'raw_image band2', 'band 1', 'band 2', 'band 3', 'correct label', 'answer']
 
 ths = ''.join(['<th>%s</th>' % th for th in header])
 f_write.write('\t\t\t%s\n' % ths)
@@ -96,39 +96,35 @@ def to_png_and_save(fits_paths):
     return (output_paths, raw_image_path)
 
 for i, row in enumerate(reader):
-    cat_id = row[0]
-    paths = to_list(row[1])
-    img_paths = []
-    for path in paths:
-        print(path)
-        #replaced = path.replace('/disk/cos/ono', '/Users/daiz/disk/cos/ono')
-        path = FILE_HOME + path
-        img_paths.append(path)
-    (png_img_paths, raw_image_path) = to_png_and_save(img_paths)
-    img_tds = ''.join([make_img_td(filepath) for filepath in png_img_paths])
-    combined_img_path = row[2].replace('/home/daiz', '/Users/daiz')
-    label = row[3]
-    #probabilities = [row[4], row[5]]
-    probabilities = row[4][2:-2].split("', '")
-    prob_tds = ''.join(['<td>%s</td>' % prob for prob in probabilities])
-    answer = probabilities.index(max(probabilities))
+   cat_id = row[0]
+   paths = to_list(row[1])
+   img_paths = []
+   for path in paths:
+       print(path)
+       #replaced = path.replace('/disk/cos/ono', '/Users/daiz/disk/cos/ono')
+       path = FILE_HOME + path
+       img_paths.append(path)
+   (png_img_paths, raw_image_path) = to_png_and_save(img_paths)
+   img_tds = ''.join([make_img_td(filepath) for filepath in png_img_paths])
+   label = row[3]
+   #probabilities = [row[4], row[5]]
+   answer = row[4]
 
-    if answer == int(label):
-        color = "#2EFE64"
-    else:
-        color = "#F78181"
+   print(answer, label)
+   if int(answer) == int(label):
+       color = "#2EFE64"
+   else:
+       color = "#F78181"
 
-    f_write.write('\t\t<tr bgcolor="%s">\n' % color)
-    f_write.write("\t\t\t<td>%s</td>\n" % cat_id)
-    f_write.write('\t\t\t%s\n' % make_img_td(raw_image_path))
-    f_write.write('\t\t\t%s\n' % img_tds)
-    f_write.write('\t\t\t%s\n' % make_img_td(combined_img_path))
-    f_write.write("\t\t\t<td>%s</td>\n" % label)
-    f_write.write('\t\t\t%s\n' % prob_tds)
-    f_write.write('\t\t\t<td>%s</td>\n' % answer)
-    f_write.write("\t\t</tr>\n")
+   f_write.write('\t\t<tr bgcolor="%s">\n' % color)
+   f_write.write("\t\t\t<td>%s</td>\n" % cat_id)
+   f_write.write('\t\t\t%s\n' % make_img_td(raw_image_path))
+   f_write.write('\t\t\t%s\n' % img_tds)
+   f_write.write("\t\t\t<td>%s</td>\n" % label)
+   f_write.write('\t\t\t<td>%s</td>\n' % answer)
+   f_write.write("\t\t</tr>\n")
 
-    print("No. %s finished" % i)
+   print("No. %s finished" % i)
 
 f_write.write("\t</table>\n")
 f_write.write("</html>\n")

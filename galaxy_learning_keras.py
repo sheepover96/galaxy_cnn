@@ -106,7 +106,7 @@ class DatasetLoader:
 
         return data_list
 
-    def crop_center(self, img,cropx,cropy):
+    def crop_center(self, img, cropx, cropy):
         y,x,z = img.shape
         startx = x//2-(cropx//2)
         starty = y//2-(cropy//2)
@@ -133,6 +133,7 @@ class DatasetLoader:
                 row_data = hdulist[1].data
             image_list.append(row_data)
         image = np.array([img for img in image_list]).transpose(1,2,0)
+        print(image.shape)
         return image
 
     def median_filter(image, ksize):
