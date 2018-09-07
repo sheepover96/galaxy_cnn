@@ -8,10 +8,11 @@ if __name__ == '__main__':
     paths = dropout_data[2:4]
     new_row1 = []
     new_row2 = []
-    with open('dataset/dropout_multi_class.csv', 'w') as f:
+    with open('dataset/dropout_4c_multi_class.csv', 'w') as f:
         writer = csv.writer(f, lineterminator='\n')
         for idx, data in dropout_data.iterrows():
             img_id = str( data[0] )
+            print(img_id)
             img_no = str( data[1] )
             label = str( data[5] )
             first_path = data[2]
@@ -20,13 +21,14 @@ if __name__ == '__main__':
             fits_paths = data[2:5]
             if fits_name.count('1.fits') > 0:
                 pass
-                #fits_paths = [fits_path for fits_path in fits_paths]
-                #fits_paths.append(os.path.join(fits_mid_path, '4.fits'))
+                fits_paths = [fits_path for fits_path in fits_paths]
+                fits_paths.append(os.path.join(fits_mid_path, '4.fits'))
             else:
-                label = str(2)
-                #tmp_fits_paths = fits_paths
-                #fits_paths = [os.path.join( fits_mid_path, '1.fits' )]
-                #fits_paths.extend( [ fits_path for fits_path in tmp_fits_paths ]  )
+                if label == "1":
+                    label = str(2)
+                tmp_fits_paths = fits_paths
+                fits_paths = [os.path.join( fits_mid_path, '1.fits' )]
+                fits_paths.extend( [ fits_path for fits_path in tmp_fits_paths ]  )
 
             new_data_row = [img_id, img_no]
             new_data_row.extend(fits_paths)

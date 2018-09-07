@@ -28,10 +28,12 @@ f_write.write("<html>\n")
 f_write.write("\t<table border='1'>\n")
 
 #header = ['catalog id', 'g band', 'r band', 'i band', 'combined img', 'correct label', 'False probability', 'True Probability', 'answer']
-header = ['catalog id', 'raw_image band2', 'band 1', 'band 2', 'band 3', 'correct label', 'answer']
+header = ['catalog id', 'raw_image band2', 'band 1', 'band 2', 'band 3', 'band 4', 'correct label', 'answer']
 
 ths = ''.join(['<th>%s</th>' % th for th in header])
 f_write.write('\t\t\t%s\n' % ths)
+
+np.set_printoptions(threshold=np.inf)
 
 def to_list(string):
     return string[2:-2].split("', '")
@@ -41,6 +43,54 @@ def make_img_td(filepath):
 
 #def normalize(image):
 #    return (image - image.min()).astype(float)*255 / (image.max() - image.min()).astype(float)
+
+def special_median_filter(src, ksize):
+    # 畳み込み演算をしない領域の幅
+    d = int((ksize - 1) / 2)
+    h, w, c = src.shape[0], src.shape[1], src.shape[2]
+
+    # 出力画像用の配列（要素は入力画像と同じ）
+    dst = src.copy()
+    result = src.copy()
+
+    for i in range(c):
+        for y in range(d, h - d):
+            for x in range(d, w - d):
+                # 近傍にある画素値の中央値を出力画像の画素値に設定
+                dst[y][x][i] = np.median(src[y - d:y + d + 1, x - d:x + d + 1, i])
+
+    means = []
+    for i in range(c):
+        means.append(np.mean(src[:, :, i] - dst[:, :, i]))
+
+    for i in range(c):
+        for y in range(d, h - d):
+            for x in range(d, w - d):
+                # 近傍にある画素値の中央値を出力画像の画素値に設定
+                pixel = src[y, x, i]
+                # print(pixel - dst[y, x, i])
+                if pixel == 0 or pixel == 255:
+                    result[y, x, i] = dst[y, x, i]
+                elif pixel - dst[y, x, i] > means[i]:
+                    result[y, x, i] = dst[y, x, i]
+    return result
+
+
+def median_filter(image, ksize):
+    # 畳み込み演算をしない領域の幅
+    d = int((ksize - 1) / 2)
+    h, w = image.shape[0], image.shape[1]
+
+    # 出力画像用の配列（要素は入力画像と同じ）
+    dst = image.copy()
+
+    for y in range(d, h - d):
+        for x in range(d, w - d):
+            # 近傍にある画素値の中央値を出力画像の画素値に設定
+            dst[y][x] = np.median(image[y - d:y + d + 1, x - d:x + d + 1])
+
+    return dst
+
 
 def normalize(image):
     min_value = image.min()
@@ -62,8 +112,29 @@ def save_as_image(image, output_path):
     #image = np.where(image > 3.5, 0, image)
     image = image * 200 / 3.5
     image = np.where(image > 255, 255, image)
+    image = special_median_filter(image, 8)
     pil_img = Image.fromarray(np.uint8(image))
     pil_img.save(output_path)
+
+def save_as_images(datas):
+    for idx, (image, output_path) in enumerate(datas):
+        if idx == 0:
+            concated_image = image
+        else:
+            concated_image = np.concatenate([concated_image, image])
+
+    flat_image = concated_image.flatten()
+    mean = flat_image.mean()
+    std = flat_image.std()
+
+    for idx, (image, output_path) in enumerate(datas):
+        image = np.where(image < mean - 3*std, mean - 3*std, image)
+        image = np.where(image > mean + 3*std, mean + 3*std, image)
+        image = (image + 3*std - mean)*255/(6*std)
+        #image = np.where(image < 0, 0, image)
+        #image = np.where(image > 3.5, 0, image)
+        pil_img = Image.fromarray(np.uint8(image))
+        pil_img.save(output_path)
 
 def zoom_img(img, original_size, pickup_size):
     startpos = int(original_size / 2) - int(pickup_size / 2)
@@ -71,10 +142,7 @@ def zoom_img(img, original_size, pickup_size):
     return img
 
 def load_and_resize(filepath):
-    hdulist = fits.open(filepath)
-    raw_image = hdulist[0].data
-    if( raw_image is None ):
-        raw_image = hdulist[1].data
+    raw_image = fits.getdata(filepath)
     image = raw_image
     #image = zoom_img(image, raw_size[0], input_shape[0])
     trimmed_image = zoom_img(image, raw_size[0], input_shape[0])
@@ -84,15 +152,18 @@ def to_png_and_save(fits_paths):
     output_paths = []
     count = 0
     raw_image_path = None
+    images = []
     for filepath in fits_paths:
         (image, trimmed_image) = load_and_resize(filepath)
         output_filepath = filepath.split('.')[0] + ".png"
-        save_as_image(trimmed_image, output_filepath)
+        #save_as_image(trimmed_image, output_filepath)
+        images.append(( trimmed_image, output_filepath ))
         output_paths.append(output_filepath)
         if count == 1:
             raw_image_path = filepath.split('.')[0] + "raw.png"
             save_as_image(image, raw_image_path)
-        count = count + 1
+        #count += 1 
+    #save_as_images(images)
     return (output_paths, raw_image_path)
 
 for i, row in enumerate(reader):
