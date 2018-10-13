@@ -29,7 +29,7 @@ feature_category_num = 512
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 PNG_IMG_DIR = '/Users/sheep/Documents/research/project/hsc/png_images'
 DATA_ROOT_DIR = '/Users/sheep/Documents/research/project/hsc'
-DATASET = 'dropout_png.csv'
+DATASET = 'dropout_test.csv'
 
 IMG_CHANNEL = 4
 IMG_SIZE = 50
@@ -39,6 +39,54 @@ IMG_IDX = 2
 LABEL_IDX = IMG_CHANNEL + IMG_IDX
 
 PNG_LABEL_IDX = 2 + IMG_CHANNEL
+
+
+class FitsImageDataset(Dataset):
+
+    def __init__(self, csv_file_path, root_dir, label, transform=None):
+        tmp_dataframe = pd.read_csv(csv_file_path, header=None)
+        self.image_dataframe = tmp_dataframe[tmp_dataframe[LABEL_IDX] == label]
+        if label == 1:
+            self.image_dataframe = self.image_dataframe#.sample(n=200)
+        self.root_dir = root_dir
+        self.transform = transform
+
+
+    def __len__(self):
+        return len(self.image_dataframe)
+
+
+    def load_image(self, img_paths):
+        image_path_list = [self.root_dir + img_path for img_path in img_paths]
+        image_list = []
+        for filepath in image_path_list:
+            hdulist = fits.open(filepath)
+            row_data = hdulist[0].data
+            if row_data is None:
+                row_data = hdulist[1].data
+            image_list.append(row_data)
+        #image = np.array([img for img in image_list]).transpose(1,2,0)
+        #print(image_path_list)
+        #plt.imshow(image)
+        #plt.show()
+        image = np.array([img for img in image_list]).transpose(1,2,0)
+        image = Image.fromarray(np.uint8(image))
+        return image
+
+
+    def __getitem__(self, idx):
+        img_id = self.image_dataframe.iat[idx, 0]
+        img_name = self.image_dataframe.iat[idx, 1]
+        img_names = self.image_dataframe.iloc[idx, IMG_IDX:IMG_IDX+IMG_CHANNEL]
+        img_names = [ path for path in img_names ]
+        image = self.load_image(img_names)
+        label = self.image_dataframe.iat[idx, LABEL_IDX]
+
+        if self.transform:
+            image = self.transform(image)
+
+        return img_id, img_name, img_names, image, label
+
 
 class PngImageDataset(Dataset):
 
@@ -104,11 +152,11 @@ if __name__ == '__main__':
 
     #data reading
     input_file_path = os.path.join(ROOT_DIR, 'dataset', DATASET)
-    true_img_dataset = PngImageDataset(input_file_path, DATA_ROOT_DIR, 1, transform=transforms.Compose([
+    true_img_dataset = FitsImageDataset(input_file_path, DATA_ROOT_DIR, 1, transform=transforms.Compose([
         transforms.CenterCrop(IMG_SIZE),
         ]), start=1, end=TRUE_DATA_NUM)
 
-    false_img_dataset = PngImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose([
+    false_img_dataset = FitsImageDataset(input_file_path, DATA_ROOT_DIR, 0, transform=transforms.Compose([
         transforms.CenterCrop(IMG_SIZE),
         ]))
 

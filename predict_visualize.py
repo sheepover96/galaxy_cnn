@@ -87,7 +87,7 @@ def to_png_and_save(fits_paths):
     for filepath in fits_paths:
         (image, trimmed_image) = load_and_resize(filepath)
         output_filepath = filepath.split('.')[0] + ".png"
-        save_as_image(trimmed_image, output_filepath)
+        #save_as_image(trimmed_image, output_filepath)
         output_paths.append(output_filepath)
         if count == 1:
             raw_image_path = filepath.split('.')[0] + "raw.png"

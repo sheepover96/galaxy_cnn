@@ -4,6 +4,8 @@ from astropy.io import fits
 import aplpy
 from PIL import Image
 import numpy as np
+from astropy.visualization import (ZScaleInterval,ImageNormalize)
+import matplotlib.pyplot as plt
 
 FILE_HOME = "/Users/sheep/Documents/research/project/hsc"
 
@@ -108,13 +110,19 @@ def normalize(image):
 
 def save_as_image(image, output_path):
     #image = normalize(image)
-    image = image + 0.5
-    #image = np.where(image > 3.5, 0, image)
-    image = image * 200 / 3.5
-    image = np.where(image > 255, 255, image)
-    image = special_median_filter(image, 8)
-    pil_img = Image.fromarray(np.uint8(image))
-    pil_img.save(output_path)
+    #image = image + 1.0
+    #image = np.where(image > 4, 4, image)
+    #image = image * 255/4
+    #image = np.where(image > 255, 255, image)
+    #image = median_filter(image, 8)
+    print(output_path)
+    norm = ImageNormalize(image,interval=ZScaleInterval())
+    #print(type(norm))
+    plt.imshow(image, cmap='gray', interpolation='nearest', norm=norm)
+    plt.savefig(output_path, dpi = 300, transparent = True, bbox_inches = 'tight', pad_inches = 0)
+    plt.close()
+    #pil_img = Image.fromarray(np.uint8(image + 1.0))
+    #pil_img.save(output_path)
 
 def save_as_images(datas):
     for idx, (image, output_path) in enumerate(datas):
@@ -142,11 +150,14 @@ def zoom_img(img, original_size, pickup_size):
     return img
 
 def load_and_resize(filepath):
-    raw_image = fits.getdata(filepath)
-    image = raw_image
-    #image = zoom_img(image, raw_size[0], input_shape[0])
-    trimmed_image = zoom_img(image, raw_size[0], input_shape[0])
-    return (image, trimmed_image)
+    try:
+        raw_image = fits.getdata(filepath)
+        image = raw_image
+        #image = zoom_img(image, raw_size[0], input_shape[0])
+        trimmed_image = zoom_img(image, raw_size[0], input_shape[0])
+        return (image, trimmed_image)
+    except FileNotFoundError:
+        print(filepath)
 
 def to_png_and_save(fits_paths):
     output_paths = []
@@ -156,7 +167,7 @@ def to_png_and_save(fits_paths):
     for filepath in fits_paths:
         (image, trimmed_image) = load_and_resize(filepath)
         output_filepath = filepath.split('.')[0] + ".png"
-        #save_as_image(trimmed_image, output_filepath)
+        save_as_image(trimmed_image, output_filepath)
         images.append(( trimmed_image, output_filepath ))
         output_paths.append(output_filepath)
         if count == 1:
@@ -171,7 +182,6 @@ for i, row in enumerate(reader):
    paths = to_list(row[1])
    img_paths = []
    for path in paths:
-       print(path)
        #replaced = path.replace('/disk/cos/ono', '/Users/daiz/disk/cos/ono')
        path = FILE_HOME + path
        img_paths.append(path)
@@ -181,7 +191,6 @@ for i, row in enumerate(reader):
    #probabilities = [row[4], row[5]]
    answer = row[4]
 
-   print(answer, label)
    if int(answer) == int(label):
        color = "#2EFE64"
    else:
@@ -195,7 +204,7 @@ for i, row in enumerate(reader):
    f_write.write('\t\t\t<td>%s</td>\n' % answer)
    f_write.write("\t\t</tr>\n")
 
-   print("No. %s finished" % i)
+   #print("No. %s finished" % i)
 
 f_write.write("\t</table>\n")
 f_write.write("</html>\n")
